@@ -4,7 +4,7 @@
     "rootDir": "src",
     "module": "esnext",
     "target": "es2022",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
