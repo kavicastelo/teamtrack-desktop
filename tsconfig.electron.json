@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "module": "esnext",
+    "target": "es2022",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "baseUrl": "./src",
+//    "paths": {
+//      "@node/*": ["src/node/*"],
+//      "@electron/*": ["src/electron/*"]
+//    }
+  },
+  "include": [
+    "src/electron/**/*.ts",
+    "src/node/**/*.ts"
+  ]
+}
