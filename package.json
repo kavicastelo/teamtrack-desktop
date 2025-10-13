@@ -1,13 +1,17 @@
 {
   "name": "teamtrack-desktop",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/electron/main.js",
+  "type": "module",
   "scripts": {
     "start": "concurrently \"npm:serve:angular\" \"npm:serve:electron\"",
     "serve:angular": "cd src/app && ng serve --port 4200",
     "serve:electron": "wait-on http://localhost:4200 && electron .",
-    "build": "cd src/app && ng build --prod && electron-builder",
-    "postinstall": "cd src/app && npm install"
+    "build:angular": "cd src/app && ng build",
+    "postinstall": "cd src/app && npm install",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "electron:start": "npm run build:electron && electron dist/electron/main.js",
+    "electron:dev": "tsc -p tsconfig.electron.json --watch & electron dist/electron/main.js"
   },
   "build": {
     "asar": true
@@ -17,13 +21,17 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "electron": "38.0.0-beta.6",
-    "electron-builder": "^26.0.12"
+    "@types/better-sqlite3": "^7.6.13",
+    "7zip-bin": "^5.2.0",
+    "electron": "^38.2.2",
+    "electron-builder": "^26.0.12",
+    "wait-on": "^8.0.5"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.75.0",
     "axios": "^1.12.2",
     "better-sqlite3": "^11.10.0",
+    "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.6",
     "electron-store": "^8.2.0",
     "libsodium-wrappers": "^0.7.15",
