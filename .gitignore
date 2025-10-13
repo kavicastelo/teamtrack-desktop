@@ -3,3 +3,4 @@ node_modules
 dist
 src/app/.vscode
 src/app/node_modules
+src/app/.angular
