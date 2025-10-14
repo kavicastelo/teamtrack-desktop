@@ -8,7 +8,6 @@ import { v4 as uuidv4 } from "uuid";
 
 const ALGO = "aes-256-gcm";
 
-/** --- Encryption helpers --- */
 function decryptBuffer(encrypted: Buffer, key: Buffer): Buffer {
   const iv = encrypted.subarray(0, 12);
   const tag = encrypted.subarray(12, 28);
@@ -26,7 +25,6 @@ function encryptBuffer(plain: Buffer, key: Buffer): Buffer {
   return Buffer.concat([iv, tag, ciphertext]);
 }
 
-/** --- Database service --- */
 export class DatabaseService {
   private readonly encryptedPath: string;
   private readonly key: Buffer;
@@ -39,7 +37,6 @@ export class DatabaseService {
     this.key = crypto.createHash("sha256").update(opts.encryptionKey).digest();
   }
 
-  /** Open or create encrypted DB */
   async open() {
     this.tmpPath = path.join(os.tmpdir(), `teamtrack-${uuidv4()}.db`);
 
@@ -48,24 +45,21 @@ export class DatabaseService {
         const encrypted = fs.readFileSync(this.encryptedPath);
         const plain = decryptBuffer(encrypted, this.key);
         fs.writeFileSync(this.tmpPath, plain, { mode: 0o600 });
-        console.log("[DB] Decrypted existing DB →", this.tmpPath);
-      } catch (e) {
-        console.error("[DB] Failed to decrypt — starting fresh:", e);
-        // fallback: create new DB
-        this.tmpPath = path.join(os.tmpdir(), `teamtrack-${uuidv4()}.db`);
+        console.log("[DB] Decrypted existing DB");
+      } catch (err) {
+        console.warn("[DB] Failed to decrypt — creating new DB:", err);
       }
     } else {
-      console.log("[DB] No encrypted DB found — creating new one");
+      console.log("[DB] No existing DB found — creating new");
     }
 
-    this.db = new Database(this.tmpPath, { verbose: console.log });
+    this.db = new Database(this.tmpPath, { verbose: (message: unknown, ...additionalArgs: unknown[]) => {
+        console.log("[DB]", message, ...additionalArgs);
+      } });
     this.orm = drizzle(this.db);
-
-    // Always ensure schema and columns exist
     await this.ensureSchema();
   }
 
-  /** Ensure schema and migration safety */
   private async ensureSchema() {
     this.db!.exec(`
       CREATE TABLE IF NOT EXISTS tasks (
@@ -99,64 +93,41 @@ export class DatabaseService {
         synced INTEGER DEFAULT 0
       );
     `);
-
-    // In case older DBs are missing 'synced' column
-    try {
-      this.db!.exec(`ALTER TABLE revisions ADD COLUMN synced INTEGER DEFAULT 0;`);
-    } catch (err: any) {
-      if (!String(err.message).includes("duplicate column name")) {
-        console.warn("[DB] Migration error:", err.message);
-      }
-    }
-
-    const tables = this.db!
-        .prepare("SELECT name FROM sqlite_master WHERE type='table'")
-        .all();
-    console.log("[DB] Tables available:", tables.map((t:any) => t.name).join(", "));
   }
 
-  /** Close and encrypt */
   async close() {
     if (!this.db) return;
-
-    const dbFile = (this.db as any).name;
+    const tmp = (this.db as any).name;
     this.db.close();
 
-    const plain = fs.readFileSync(dbFile);
+    const plain = fs.readFileSync(tmp);
     const encrypted = encryptBuffer(plain, this.key);
     fs.writeFileSync(this.encryptedPath, encrypted, { mode: 0o600 });
-
-    console.log("[DB] Encrypted DB saved at:", this.encryptedPath);
-
-    try {
-      fs.unlinkSync(dbFile);
-    } catch (e) {
-      console.warn("[DB] Temp cleanup failed:", e);
-    }
+    fs.unlinkSync(tmp);
+    console.log("[DB] Closed + Encrypted at", this.encryptedPath);
   }
 
-  /** --- Query helpers --- */
   query(sql: string, params?: any[]) {
     if (!this.db) throw new Error("DB not open");
-    const bindParams = Array.isArray(params)
+    const stmt = this.db.prepare(sql);
+    const bind = Array.isArray(params)
         ? params
         : params !== undefined
             ? [params]
             : [];
-    const stmt = this.db.prepare(sql);
-
-    if (/^\s*select/i.test(sql)) return stmt.all(...bindParams);
-    return stmt.run(...bindParams);
+    if (/^\s*select/i.test(sql)) return stmt.all(...bind);
+    return stmt.run(...bind);
   }
 
   createTask(payload: any) {
     const id = payload.id || uuidv4();
+    payload.id = id;
     const now = Date.now();
-    const stmt = this.db!.prepare(`
-      INSERT INTO tasks (id, project_id, title, description, status, assignee, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-    stmt.run(
+    payload.updated_at = now;
+    this.db!.prepare(
+        `INSERT INTO tasks (id, project_id, title, description, status, assignee, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).run(
         id,
         payload.project_id || null,
         payload.title,
@@ -165,16 +136,62 @@ export class DatabaseService {
         payload.assignee || null,
         now
     );
+
+    // Add revision entry for sync
+    this.db!.prepare(
+        `INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+       VALUES (?, ?, ?, ?, ?, ?, 0)`
+    ).run(uuidv4(), "tasks", id, 1, JSON.stringify(payload), now);
+
     return { id, ...payload, updated_at: now };
+  }
+
+  listTasks() {
+    const rows = this.db!.prepare(`SELECT * FROM tasks ORDER BY updated_at DESC`).all();
+    return rows;
+  }
+
+  updateTask(payload: any) {
+    if (!payload.id) throw new Error("Missing task ID");
+    const now = Date.now();
+
+    const stmt = this.db!.prepare(`
+    UPDATE tasks
+    SET project_id = ?, title = ?, description = ?, status = ?, assignee = ?, updated_at = ?
+    WHERE id = ?
+  `);
+    stmt.run(
+        payload.project_id || null,
+        payload.title,
+        payload.description || "",
+        payload.status || "todo",
+        payload.assignee || null,
+        now,
+        payload.id
+    );
+
+    // Insert revision for sync
+    this.db!.prepare(
+        `INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+     VALUES (?, ?, ?, ?, ?, ?, 0)`
+    ).run(
+        crypto.randomUUID(),
+        "tasks",
+        payload.id,
+        Date.now(),
+        JSON.stringify(payload),
+        now
+    );
+
+    return { ...payload, updated_at: now };
   }
 
   async logEvent(e: any) {
     const id = uuidv4();
-    const stmt = this.db!.prepare(`
-      INSERT INTO events (id, actor, action, object_type, object_id, payload, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-    stmt.run(
+    this.db!.prepare(
+        `INSERT INTO events (id, actor, action, object_type, object_id, payload, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).run(
         id,
         e.actor || null,
         e.action,

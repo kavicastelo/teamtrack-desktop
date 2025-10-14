@@ -1,45 +1,56 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import EventEmitter from "events";
 
 export class SupabaseSyncService extends EventEmitter {
-  private client;
-  private dbService;
-  private subs = [];
-  private pushInterval?: NodeJS.Timeout;
+  private client: SupabaseClient;
+  private dbService: any;
+  private channels: any[] = [];
+  private pushTimer?: NodeJS.Timeout;
 
-  constructor(opts: any) {
+  constructor(opts: {
+    supabaseUrl: string;
+    supabaseKey: string;
+    db: any;
+  }) {
     super();
-    this.client = createClient(opts.supabaseUrl, opts.supabaseKey);
+    this.client = createClient(opts.supabaseUrl, opts.supabaseKey, { auth: { persistSession: false } });
     this.dbService = opts.db;
   }
 
   async start() {
-    console.log("[Sync] Starting Supabase sync...");
-    const taskSub = this.client
-        .channel("public:tasks")
+    console.log("[Sync] Starting realtime sync...");
+    const channel = this.client
+        .channel("tasks-realtime")
         .on(
             "postgres_changes",
             { event: "*", schema: "public", table: "tasks" },
             (payload) => this.handleRemoteChange("tasks", payload)
         )
-        .subscribe();
+        .subscribe((status) => console.log("[Sync] Subscribed:", status));
 
-    this.subs.push(taskSub);
-    this.pushInterval = setInterval(
-        () => this.pushLocalRevisions(),
-        5000 // push every 5s
-    );
+    this.channels.push(channel);
+
+    // periodic local → cloud push
+    this.pushTimer = setInterval(() => {
+      this.pushLocalRevisions().catch((err) =>
+          console.error("[Sync] pushLocalRevisions error:", err)
+      );
+    }, 7000);
   }
 
   async stop() {
-    console.log("[Sync] Stopping Supabase sync...");
-    this.subs.forEach((s) => s.unsubscribe());
-    this.subs = [];
-    if (this.pushInterval) clearInterval(this.pushInterval);
+    console.log("[Sync] Stopping...");
+    if (this.pushTimer) clearInterval(this.pushTimer);
+    for (const ch of this.channels) {
+      await this.client.removeChannel(ch);
+    }
+    this.channels = [];
   }
 
   async handleRemoteChange(table: string, payload: any) {
-    const record = payload.record;
+    const record = payload.new || payload.record;
+    if (!record?.id) return;
+
     const sql = `
       INSERT INTO tasks (id, project_id, title, description, status, assignee, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -51,7 +62,7 @@ export class SupabaseSyncService extends EventEmitter {
         assignee=excluded.assignee,
         updated_at=excluded.updated_at
     `;
-    await this.dbService.query(sql, [
+    this.dbService.query(sql, [
       record.id,
       record.project_id,
       record.title,
@@ -65,22 +76,28 @@ export class SupabaseSyncService extends EventEmitter {
 
   async pushLocalRevisions() {
     const rows = this.dbService.query(
-        "SELECT * FROM revisions WHERE synced IS NULL OR synced = 0 LIMIT 100"
+        "SELECT * FROM revisions WHERE synced = 0 LIMIT 50"
     );
     if (!rows.length) return;
 
     console.log(`[Sync] Pushing ${rows.length} local revisions...`);
 
     for (const r of rows) {
-      const { error } = await this.client
-          .from(r.object_type)
-          .upsert(JSON.parse(r.payload));
-      if (!error) {
-        this.dbService.query("UPDATE revisions SET synced = 1 WHERE id = ?", [
-          r.id,
-        ]);
-      } else {
-        console.error("[Sync] Push error:", error);
+      try {
+        const payload = JSON.parse(r.payload);
+        const { error } = await this.client
+            .from(r.object_type)
+            .upsert(payload, { onConflict: "id" });
+
+        if (!error) {
+          this.dbService.query("UPDATE revisions SET synced = 1 WHERE id = ?", [
+            r.id,
+          ]);
+        } else {
+          console.error("[Sync] Push error:", error);
+        }
+      } catch (err) {
+        console.error("[Sync] Revision parse error:", err);
       }
     }
   }

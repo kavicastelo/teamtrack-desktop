@@ -1,0 +1,37 @@
+<div class="task-board">
+  <div class="header">
+    <div class="left">
+      <h2>Task Board</h2>
+      <button (click)="refresh()" mat-stroked-button>Refresh</button>
+    </div>
+    <div class="right">
+      <input #newTitle placeholder="Quick add (enter to create)" (keydown.enter)="createQuickTask(newTitle); newTitle.value=''" />
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading">Loading…</div>
+  <div *ngIf="error" class="error">{{ error }}</div>
+
+  <div class="columns" cdkDropListGroup>
+    <div *ngFor="let col of columns" class="column">
+      <h3>{{ col.title }} <span class="count">({{ col.tasks.length }})</span></h3>
+
+      <div
+        cdkDropList
+        [id]="col.id"
+        [cdkDropListData]="col.tasks"
+        class="task-list"
+        (cdkDropListDropped)="drop($event)">
+        <div *ngFor="let t of col.tasks" cdkDrag class="task-card">
+          <div class="title">{{ t.title }}</div>
+          <div class="meta">
+            <small *ngIf="t.assignee">👤 {{ t.assignee }}</small>
+            <small>{{ formatDate(t.updated_at) }}</small>
+          </div>
+        </div>
+
+        <div *ngIf="col.tasks.length === 0" class="empty">No tasks</div>
+      </div>
+    </div>
+  </div>
+</div>
