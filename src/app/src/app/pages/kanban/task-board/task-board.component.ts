@@ -1,4 +1,4 @@
-import {Component, OnDestroy, OnInit} from '@angular/core';
+import {Component, HostBinding, OnDestroy, OnInit} from '@angular/core';
 import {IpcService} from '../../../services/ipc.service';
 import {
   CdkDrag,
@@ -8,8 +8,11 @@ import {
   moveItemInArray,
   transferArrayItem
 } from '@angular/cdk/drag-drop';
-import {DatePipe, NgForOf, NgIf} from '@angular/common';
+import {DatePipe, NgClass, NgForOf, NgIf} from '@angular/common';
 import {Task} from '../../../models/task.model';
+import {MatButton} from '@angular/material/button';
+import {MatDialog} from '@angular/material/dialog';
+import {TaskDetailDialogComponent} from '../task-detail-dialog/task-detail-dialog.component';
 
 @Component({
   selector: 'app-task-board',
@@ -18,14 +21,17 @@ import {Task} from '../../../models/task.model';
     CdkDropList,
     CdkDrag,
     NgIf,
-    DatePipe,
-    CdkDropListGroup
+    CdkDropListGroup,
+    NgClass,
+    MatButton
   ],
   templateUrl: './task-board.component.html',
   styleUrl: './task-board.component.scss',
   standalone: true
 })
 export class TaskBoardComponent implements OnInit, OnDestroy {
+  @HostBinding('class.dark-mode') darkMode = false;
+
   columns = [
     { id: 'todo', title: 'To do', tasks: [] as Task[] },
     { id: 'in-progress', title: 'In Progress', tasks: [] as Task[] },
@@ -38,10 +44,15 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   // unsubscribe function returned by preload's onRemoteUpdate
   private unsubRemote: (() => void) | null = null;
 
-  constructor(private ipc: IpcService) {}
+  constructor(private ipc: IpcService, private dialog: MatDialog) {}
 
   ngOnInit(): void {
     this.loadTasks().then();
+
+    // detect dark mode
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    this.darkMode = media.matches;
+    media.addEventListener('change', (e) => (this.darkMode = e.matches));
 
     // subscribe to realtime remote updates forwarded by Electron main
     this.unsubRemote = this.ipc.onRemoteUpdate((payload: any) => {
@@ -67,8 +78,9 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.error = null;
     try {
-      const rows: Task[] = await this.ipc.listTasks();
-      this.populateColumns(rows || []);
+      await this.ipc.listTasks().then((rows: Task[]) => {
+        this.populateColumns(rows || []);
+      });
     } catch (err: any) {
       console.error('loadTasks failed', err);
       this.error = err?.message || 'Failed to load tasks';
@@ -143,7 +155,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
 
     try {
       // call update via IPC
-      await this.ipc.updateTask({ id: task.id, status: newStatus });
+      await this.ipc.updateTask({ id: task.id, project_id: task.project_id, title: task.title, description: task.description, status: newStatus, assignee: task.assignee });
       // success — local DB will be updated and sync service will propagate remotely
     } catch (err) {
       console.error('updateTask failed, rolling back', err);
@@ -162,5 +174,23 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   // Manual refresh helper
   refresh() {
     this.loadTasks().then();
+  }
+
+  toggleTheme() {
+    this.darkMode = !this.darkMode;
+  }
+
+  openTaskDetail(task: Task) {
+    const ref = this.dialog.open(TaskDetailDialogComponent, {
+      width: '500px',
+      data: { task },
+      panelClass: this.darkMode ? 'dark-dialog' : ''
+    });
+
+    ref.afterClosed().subscribe((result) => {
+      if (result) {
+        this.applyRemoteTask(result); // refresh the changed task
+      }
+    });
   }
 }

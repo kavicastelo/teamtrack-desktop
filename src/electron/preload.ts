@@ -12,4 +12,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
         ipcRenderer.on("remote:update", listener);
         return () => ipcRenderer.removeListener("remote:update", listener);
     },
+    uploadAttachment: (taskId: string) => ipcRenderer.invoke('upload-attachment', taskId),
+    downloadAttachment: (path: string) => ipcRenderer.invoke('download-attachment', path),
+    listAttachments: (taskId: string) => ipcRenderer.invoke('list-attachments', taskId),
 });

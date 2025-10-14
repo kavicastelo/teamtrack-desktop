@@ -1,0 +1,29 @@
+:host {
+  display: block;
+  color: #e0e0e0;
+
+  mat-form-field {
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  .meta {
+    font-size: 0.85rem;
+    color: #9e9e9e;
+    margin-top: 10px;
+  }
+
+  .error {
+    color: #ef5350;
+    margin-top: 10px;
+  }
+}
+
+.dark-mode {
+  background: #1e1e1e;
+  color: #e0e0e0;
+}

@@ -1,0 +1,58 @@
+<h2 mat-dialog-title>📝 Edit Task</h2>
+
+<mat-dialog-content>
+  <div class="form">
+    <mat-form-field appearance="outline">
+      <mat-label>Title</mat-label>
+      <input matInput [(ngModel)]="task.title" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Description</mat-label>
+      <textarea matInput rows="4" [(ngModel)]="task.description"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Status</mat-label>
+      <mat-select [(ngModel)]="task.status">
+        <mat-option value="todo">To Do</mat-option>
+        <mat-option value="in-progress">In Progress</mat-option>
+        <mat-option value="review">Review</mat-option>
+        <mat-option value="done">Done</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Assignee</mat-label>
+      <input matInput [(ngModel)]="task.assignee" />
+    </mat-form-field>
+
+    <div class="meta">
+      <p><strong>Last updated:</strong> {{ task.updated_at | date:'short' }}</p>
+      <p><strong>ID:</strong> {{ task.id }}</p>
+    </div>
+
+    <div *ngIf="error" class="error">{{ error }}</div>
+  </div>
+  <h3 class="section-title">📎 Attachments</h3>
+  <div class="attachments">
+    <button mat-stroked-button color="accent" (click)="uploadAttachment()">Upload File</button>
+
+    <div class="attachment-list" *ngIf="attachments.length > 0">
+      <div *ngFor="let att of attachments" class="file-item" (click)="openAttachment(att)">
+        <mat-icon>insert_drive_file</mat-icon>
+        <span>{{ att.filename }}</span>
+        <small>{{ (att.size / 1024) | number:'1.0-0' }} KB</small>
+      </div>
+    </div>
+
+    <p *ngIf="attachments.length === 0" class="empty">No attachments yet</p>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button (click)="cancel()">Cancel</button>
+  <button mat-flat-button color="primary" (click)="save()" [disabled]="saving">
+    {{ saving ? 'Saving...' : 'Save' }}
+  </button>
+</mat-dialog-actions>
