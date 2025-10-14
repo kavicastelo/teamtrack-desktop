@@ -1,5 +1,12 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import EventEmitter from "events";
+import {app, BrowserWindow} from "electron";
+import path from "path";
+import fs from "fs";
+import {attachments} from "../drizzle/shema";
+import {shell, dialog} from 'electron';
+import {eq} from "drizzle-orm";
+import {v4 as uuidv4} from "uuid";
 
 export class SupabaseSyncService extends EventEmitter {
   private client: SupabaseClient;
@@ -100,5 +107,54 @@ export class SupabaseSyncService extends EventEmitter {
         console.error("[Sync] Revision parse error:", err);
       }
     }
+  }
+
+  async createAttachment(taskId: string) {
+    const win = BrowserWindow.getFocusedWindow();
+    const result = await dialog.showOpenDialog(win!, {
+      properties: ['openFile']
+    });
+    if (result.canceled || result.filePaths.length === 0) return null;
+
+    const filePath = result.filePaths[0];
+    const fileName = path.basename(filePath);
+    const fileBuffer = fs.readFileSync(filePath);
+
+    const supabasePath = `tasks/${taskId}/${Date.now()}-${fileName}`;
+    const {data, error} = await this.client.storage.from('attachments').upload(supabasePath, fileBuffer);
+
+    if (error) throw error;
+
+    const created_at = new Date().getTime();
+
+    const newAttachment = {
+      id: uuidv4(),
+      taskId,
+      filename: fileName,
+      mimetype: 'application/octet-stream',
+      size: fs.statSync(filePath).size,
+      supabasePath,
+      created_at
+    };
+
+    const db = this.dbService.getOrm();
+    db.insert(attachments).values(newAttachment).run();
+    return newAttachment;
+  }
+
+  async downloadAttachment(supabasePath: string) {
+    const { data, error } = await this.client.storage.from('attachments').download(supabasePath);
+    if (error) throw error;
+
+    const tmpFile = path.join(app.getPath('temp'), path.basename(supabasePath));
+    fs.writeFileSync(tmpFile, Buffer.from(await data.arrayBuffer()));
+
+    await shell.openPath(tmpFile);
+    return tmpFile;
+  }
+
+  async listAttachments(taskId: string) {
+    const db = this.dbService.getOrm();
+    return db.select().from(attachments).where(eq(attachments.taskId, taskId)).all();
   }
 }

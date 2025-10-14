@@ -23,4 +23,13 @@ export class IpcService {
   onRemoteUpdate(cb: (payload: any) => void) {
     return window.electronAPI.onRemoteUpdate(cb);
   }
+  async uploadAttachment(taskId: string) {
+    return window.electronAPI.uploadAttachment(taskId);
+  }
+  async listAttachments(taskId: string) {
+    return window.electronAPI.listAttachments(taskId);
+  }
+  async downloadAttachment(supabasePath: string) {
+    return window.electronAPI.downloadAttachment(supabasePath);
+  }
 }

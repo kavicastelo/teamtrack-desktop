@@ -1,10 +1,10 @@
 import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import {drizzle} from "drizzle-orm/better-sqlite3";
 import fs from "fs";
 import crypto from "crypto";
 import os from "os";
 import path from "path";
-import { v4 as uuidv4 } from "uuid";
+import {v4 as uuidv4} from "uuid";
 
 const ALGO = "aes-256-gcm";
 
@@ -92,7 +92,22 @@ export class DatabaseService {
         created_at INTEGER,
         synced INTEGER DEFAULT 0
       );
+
+      CREATE TABLE IF NOT EXISTS attachments (
+        id TEXT PRIMARY KEY,
+        task_id TEXT,
+        filename TEXT,
+        mimetype TEXT,
+        size INTEGER,
+        supabase_path TEXT,
+        created_at INTEGER
+      );
     `);
+  }
+
+  getOrm() {
+    if (!this.orm) throw new Error("DB not initialized");
+    return this.orm;
   }
 
   async close() {
@@ -147,13 +162,21 @@ export class DatabaseService {
   }
 
   listTasks() {
-    const rows = this.db!.prepare(`SELECT * FROM tasks ORDER BY updated_at DESC`).all();
-    return rows;
+    return this.db!.prepare(`SELECT * FROM tasks ORDER BY updated_at DESC`).all();
   }
 
   updateTask(payload: any) {
     if (!payload.id) throw new Error("Missing task ID");
     const now = Date.now();
+    payload.updated_at = now;
+    const title = payload.title || "Untitled Task";
+    payload.title = title;
+    const description = payload.description || "";
+    payload.description = description;
+    const status = payload.status || "todo";
+    payload.status = status;
+    const assignee = payload.assignee || null;
+    payload.assignee = assignee;
 
     const stmt = this.db!.prepare(`
     UPDATE tasks
@@ -162,10 +185,10 @@ export class DatabaseService {
   `);
     stmt.run(
         payload.project_id || null,
-        payload.title,
-        payload.description || "",
-        payload.status || "todo",
-        payload.assignee || null,
+        title,
+        description || "",
+        status || "todo",
+        assignee || null,
         now,
         payload.id
     );

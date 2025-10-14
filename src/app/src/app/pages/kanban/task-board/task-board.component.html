@@ -1,11 +1,19 @@
-<div class="task-board">
+<div class="task-board" [class.dark-mode]="darkMode">
   <div class="header">
     <div class="left">
-      <h2>Task Board</h2>
-      <button (click)="refresh()" mat-stroked-button>Refresh</button>
+      <h2>🗂️ Task Board
+        <button mat-stroked-button (click)="toggleTheme()">
+          {{ darkMode ? "☀️ Light" : "🌙 Dark" }}
+        </button>
+      </h2>
+      <button (click)="refresh()" mat-stroked-button color="accent">Refresh</button>
     </div>
     <div class="right">
-      <input #newTitle placeholder="Quick add (enter to create)" (keydown.enter)="createQuickTask(newTitle); newTitle.value=''" />
+      <input
+        #newTitle
+        placeholder="Quick add (press Enter)"
+        (keydown.enter)="createQuickTask(newTitle)"
+      />
     </div>
   </div>
 
@@ -14,15 +22,20 @@
 
   <div class="columns" cdkDropListGroup>
     <div *ngFor="let col of columns" class="column">
-      <h3>{{ col.title }} <span class="count">({{ col.tasks.length }})</span></h3>
+      <div class="column-header">
+        <h3>{{ col.title }}</h3>
+        <span class="count">{{ col.tasks.length }}</span>
+      </div>
 
       <div
         cdkDropList
         [id]="col.id"
         [cdkDropListData]="col.tasks"
         class="task-list"
+        [ngClass]="col.id"
         (cdkDropListDropped)="drop($event)">
-        <div *ngFor="let t of col.tasks" cdkDrag class="task-card">
+
+        <div *ngFor="let t of col.tasks" cdkDrag class="task-card" (click)="openTaskDetail(t)">
           <div class="title">{{ t.title }}</div>
           <div class="meta">
             <small *ngIf="t.assignee">👤 {{ t.assignee }}</small>

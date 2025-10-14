@@ -1,9 +1,9 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import {app, BrowserWindow, ipcMain} from "electron";
 import path from "path";
 import Store from "electron-store";
 import "dotenv/config";
-import { DatabaseService } from "../node/db/database.service.js";
-import { SupabaseSyncService } from "../node/supabase-sync.service.js";
+import {DatabaseService} from "../node/db/database.service.js";
+import {SupabaseSyncService} from "../node/supabase-sync.service.js";
 import crypto from "crypto";
 
 const store = new Store();
@@ -11,11 +11,21 @@ let mainWindow: BrowserWindow | null = null;
 let dbService: DatabaseService;
 let syncService: SupabaseSyncService;
 
+export interface Attachment {
+    id: string;
+    taskId: string;
+    filename: string;
+    mimetype: string;
+    size: number;
+    supabasePath: string;
+}
+
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1280,
         height: 840,
         webPreferences: {
+            zoomFactor: 1.0,
             preload: path.join(__dirname, "preload.js"),
             contextIsolation: true,
             nodeIntegration: false,
@@ -126,6 +136,42 @@ app.whenReady().then(async () => {
 // 🔹 Forward remote realtime updates to renderer
     syncService.on("remote:applied", (_evt) => {
         if (mainWindow) mainWindow.webContents.send("remote:update", _evt);
+    });
+
+    ipcMain.handle('upload-attachment', async (_, taskId: string) => {
+        try {
+            const attachment = await syncService.createAttachment(taskId);
+            await dbService.logEvent({
+                action: "attachment:create",
+                object_type: "attachment",
+                object_id: attachment.id,
+                payload: "attachment("+attachment.filename+") uploaded to "+attachment.supabasePath,
+            });
+            return attachment;
+        } catch (err: any) {
+            console.error("[IPC] attachment:create error:", err);
+            throw err;
+        }
+    });
+
+// Download and open file
+    ipcMain.handle('download-attachment', async (_, supabasePath: string) => {
+        try {
+            return await syncService.downloadAttachment(supabasePath);
+        } catch (err: any) {
+            console.error("[IPC] attachment:download error:", err);
+            throw err;
+        }
+    });
+
+// List attachments for task
+    ipcMain.handle('list-attachments', async (_, taskId: string) => {
+        try {
+            return await syncService.listAttachments(taskId);
+        } catch (err: any) {
+            console.error("[IPC] attachment:list error:", err);
+            throw err;
+        }
     });
 
     app.on("activate", () => {
