@@ -1,10 +1,15 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-contextBridge.exposeInMainWorld('electronAPI', {
-    query: (q: string, params?: any[]) => ipcRenderer.invoke('db:query', q, params),
-    createTask: (payload: any) => ipcRenderer.invoke('task:create', payload),
-    // subscribe to notifications
-    onRemoteUpdate: (cb: (event:any) => void) => {
-        ipcRenderer.on('sync:remote', (e, data) => cb(data));
-    }
+contextBridge.exposeInMainWorld("electronAPI", {
+    createTask: (payload: any) => ipcRenderer.invoke("task:create", payload),
+    updateTask: (payload: any) => ipcRenderer.invoke("task:update", payload),
+    listTasks: () => ipcRenderer.invoke("task:list"),
+    rawQuery: (sql: string, params?: any[]) =>
+        ipcRenderer.invoke("raw:query", sql, params),
+
+    onRemoteUpdate: (cb: (data: any) => void) => {
+        const listener = (_event: any, payload: any) => cb(payload);
+        ipcRenderer.on("remote:update", listener);
+        return () => ipcRenderer.removeListener("remote:update", listener);
+    },
 });

@@ -69,5 +69,6 @@ create table revisions (
                            origin_id text, -- client id
                            seq bigint,     -- monotonic sequence per client
                            payload jsonb,
-                           created_at timestamptz default now()
+                           created_at timestamptz default now(),
+                           synced int default 0
 );

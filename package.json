@@ -2,7 +2,7 @@
   "name": "teamtrack-desktop",
   "version": "1.0.0",
   "main": "dist/electron/main.js",
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
     "start": "concurrently \"npm:serve:angular\" \"npm:serve:electron\"",
     "serve:angular": "cd src/app && ng serve --port 4200",

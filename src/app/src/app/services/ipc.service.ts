@@ -11,10 +11,16 @@ export class IpcService {
   async createTask(payload: any) {
     return window.electronAPI.createTask(payload);
   }
-  async query(q: string, params?: any[]) {
-    return window.electronAPI.query(q, params);
+  async updateTask(payload: any) {
+    return window.electronAPI.updateTask(payload);
   }
-  onRemoteUpdate(cb: (data:any) => void) {
-    window.electronAPI.onRemoteUpdate(cb);
+  async listTasks() {
+    return window.electronAPI.listTasks();
+  }
+  async rawQuery(sql: string, params?: any[]) {
+    return window.electronAPI.rawQuery(sql, params);
+  }
+  onRemoteUpdate(cb: (payload: any) => void) {
+    return window.electronAPI.onRemoteUpdate(cb);
   }
 }
