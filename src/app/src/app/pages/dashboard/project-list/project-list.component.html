@@ -1,0 +1,14 @@
+<div class="p-6">
+  <button (click)="createProject()" class="btn">New Project</button>
+  <ul>
+    <li *ngFor="let p of projects" class="border p-2 my-2 rounded">
+      <div class="flex justify-between">
+        <div>
+          <h3 class="font-medium">{{ p.name }}</h3>
+          <p class="text-sm text-gray-600">{{ p.description }}</p>
+        </div>
+        <button (click)="selectProject(p)" class="btn-secondary">View</button>
+      </div>
+    </li>
+  </ul>
+</div>

@@ -123,7 +123,7 @@ export class SupabaseSyncService extends EventEmitter {
             try {
               await this.recreateRealtimeSubscriptions();
               await this.pushLocalRevisions();
-              await this.pullRemoteUpdates();
+              await this.pullAllRemoteUpdates();
             } catch (e) {
               console.error("[Sync] reconnect error:", e);
             } finally {
@@ -181,8 +181,9 @@ export class SupabaseSyncService extends EventEmitter {
     const record = payload.new || payload.record;
     if (!record?.id) return;
 
-    try {
-      const sql = `
+    if (table === 'tasks') {
+      try {
+        const sql = `
       INSERT INTO tasks (id, project_id, title, description, status, assignee, updated_at, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
@@ -194,65 +195,146 @@ export class SupabaseSyncService extends EventEmitter {
         updated_at=excluded.updated_at,
         created_at=excluded.created_at
     `;
-      this.dbService.query(sql, [
-        record.id,
-        record.project_id,
-        record.title,
-        record.description,
-        record.status,
-        record.assignee,
-        new Date(record.updated_at).getTime(),
-        record.created_at,
-      ]);
+        this.dbService.query(sql, [
+          record.id,
+          record.project_id,
+          record.title,
+          record.description,
+          record.status,
+          record.assignee,
+          new Date(record.updated_at).getTime(),
+          record.created_at,
+        ]);
 
-      this.sendToUI("sync:remoteUpdate", record);
-    } catch (err) {
-      console.error("[Sync] handleRemoteChange error:", err);
+        this.sendToUI("sync:remoteUpdate", record);
+      } catch (err) {
+        console.error("[Sync] handleRemoteChange error:", err);
+      }
+    } else if (table === 'revisions') {
+      try {
+        const sql = `
+      INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        object_type=excluded.object_type,
+        object_id=excluded.object_id,
+        seq=excluded.seq,
+        payload=excluded.payload,
+        created_at=excluded.created_at,
+        synced=excluded.synced
+    `;
+        this.dbService.query(sql, [
+          record.id,
+          record.object_type,
+          record.object_id,
+          record.seq,
+          record.payload,
+          record.created_at,
+          record.synced,
+        ]);
+      } catch (err) {
+        console.error("[Sync] handleRemoteChange error:", err);
+      }
+    } else if (table === 'projects') {
+      try {
+        const sql = `
+      INSERT INTO projects (id, name, description, owner_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        name=excluded.title,
+        description=excluded.description,
+        owner_id=excluded.owner_id,
+        created_at=excluded.created_at,
+        updated_at=excluded.updated_at
+    `;
+        this.dbService.query(sql, [
+          record.id,
+          record.name,
+          record.description,
+          record.owner_id,
+          record.created_at,
+          record.updated_at,
+        ]);
+
+        this.sendToUI("sync:remoteUpdate", record);
+      } catch (err) {
+        console.error("[Sync] handleRemoteChange error:", err);
+      }
+    } else if (table === 'teams') {
+      try {
+        const sql = `
+      INSERT INTO teams (id, project_id, name, description, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        project_id=excluded.project_id,
+        name=excluded.name,
+        description=excluded.description,
+        created_at=excluded.created_at,
+        updated_at=excluded.updated_at
+    `;
+        this.dbService.query(sql, [
+          record.id,
+          record.project_id,
+          record.name,
+          record.description,
+          record.created_at,
+          record.updated_at,
+        ]);
+
+        this.sendToUI("sync:remoteUpdate", record);
+      } catch (err) {
+        console.error("[Sync] handleRemoteChange error:", err);
+      }
     }
   }
 
   /** 📡 Subscribe to realtime task changes */
   async startRealtimeSub() {
-    try {
-      const ch = this.client
-          .channel("public:tasks")
-          // postgres_changes still uses 3 arguments
-          .on(
-              "postgres_changes",
-              { event: "*", schema: "public", table: "tasks" },
-              (payload) => this.handleRemoteChange("tasks", payload)
-          )
-          // event listeners only take 2 arguments now
-          // .on("error", (e: any) => console.warn("[Sync] realtime channel error:", e))
-          // .on("close", () => console.debug("[Sync] realtime channel closed"));
+    const channels = ["tasks", "revisions", "projects", "teams"];
 
-      await ch.subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          console.log("[Sync] ✅ Realtime subscription active for tasks");
-          this.sendToUI("sync:status", { realtime: "connected" });
-        }
-      });
+    for (const channel of channels) {
+      try {
+        const ch = this.client
+            .channel("public:"+channel)
+            // postgres_changes still uses 3 arguments
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: channel },
+                (payload) => this.handleRemoteChange(channel, payload)
+            )
+        // event listeners only take 2 arguments now
+        // .on("error", (e: any) => console.warn("[Sync] realtime channel error:", e))
+        // .on("close", () => console.debug("[Sync] realtime channel closed"));
 
-      this.channels.push(ch);
-    } catch (err) {
-      console.error("[Sync] startRealtimeSub failed:", err);
-      this.sendToUI("sync:status", { realtime: "error", message: String(err) });
+        await ch.subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            console.log("[Sync] ✅ Realtime subscription active for "+channel);
+            this.sendToUI("sync:status", { realtime: "connected" });
+          }
+        });
+
+        this.channels.push(ch);
+      } catch (err) {
+        console.error("[Sync] startRealtimeSub failed:", err);
+        this.sendToUI("sync:status", { realtime: "error", message: String(err) });
+      }
     }
   }
 
   /** Pull new/updated records from Supabase */
-  async pullRemoteUpdates() {
-    try {
-      const { data, error } = await this.client.from("tasks").select("*").order("updated_at", { ascending: true });
-      if (error) throw error;
-      if (!Array.isArray(data)) return;
+  async pullRemoteUpdates(tabel: string) {
+    if (tabel === 'tasks') {
+      try {
+        const { data, error } = await this.client.from("tasks").select("*").order("updated_at", { ascending: true });
+        if (error) throw error;
+        if (!Array.isArray(data)) return;
 
-      for (const record of data) {
-        const local = this.dbService.db.prepare("SELECT * FROM tasks WHERE id = ?").get(record.id);
-        if (!local || new Date(record.updated_at).getTime() > new Date(local.updated_at).getTime()) {
-          this.dbService.db
-              .prepare(
-                  `INSERT INTO tasks (id, project_id, title, description, status, assignee, updated_at)
+        for (const record of data) {
+          const local = this.dbService.db.prepare("SELECT * FROM tasks WHERE id = ?").get(record.id);
+          if (!local || new Date(record.updated_at).getTime() > new Date(local.updated_at).getTime()) {
+            this.dbService.db
+                .prepare(
+                    `INSERT INTO tasks (id, project_id, title, description, status, assignee, updated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(id) DO UPDATE SET
                  project_id=excluded.project_id,
@@ -261,15 +343,112 @@ export class SupabaseSyncService extends EventEmitter {
                  status=excluded.status,
                  assignee=excluded.assignee,
                  updated_at=excluded.updated_at`
-              )
-              .run(record.id, record.project_id, record.title, record.description, record.status, record.assignee, record.updated_at);
+                )
+                .run(record.id, record.project_id, record.title, record.description, record.status, record.assignee, record.updated_at);
+          }
         }
-      }
 
-      this.sendToUI("sync:pull", { count: data.length });
-      console.log(`[Sync] Pulled ${data.length} records`);
-    } catch (err) {
-      console.error("[Sync] Pull failed:", err);
+        this.sendToUI("sync:pull", { count: data.length });
+        console.log(`[Sync] Pulled ${data.length} records`);
+      } catch (err) {
+        console.error("[Sync] Pull failed:", err);
+      }
+    } else if (tabel === 'revisions') {
+      try {
+        const { data, error } = await this.client.from("revisions").select("*").order("created_at", { ascending: true });
+        if (error) throw error;
+        if (!Array.isArray(data)) return;
+
+        for (const record of data) {
+          const local = this.dbService.db.prepare("SELECT * FROM revisions WHERE id = ?").get(record.id);
+          if (!local || new Date(record.updated_at).getTime() > new Date(local.updated_at).getTime()) {
+            this.dbService.db
+                .prepare(
+                    `INSERT INTO revisions (id, object_type, object_id, origin_id, seq, payload, created_at, synced)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                 object_type=excluded.object_type,
+                 object_id=excluded.object_id,
+                 origin_id=excluded.origin_id,
+                 seq=excluded.seq,
+                 payload=excluded.payload,
+                 created_at=excluded.created_at,
+                 synced=excluded.synced`
+                )
+                .run(record.id, record.object_type, record.object_id, record.origin_id, record.seq, record.payload, record.created_at, record.synced);
+          }
+        }
+
+        this.sendToUI("sync:pull", { count: data.length });
+        console.log(`[Sync] Pulled ${data.length} revisions`);
+      } catch (err) {
+        console.error("[Sync] Pull failed:", err);
+      }
+    } else if (tabel === 'projects') {
+      try {
+        const { data, error } = await this.client.from("projects").select("*").order("updated_at", { ascending: true });
+        if (error) throw error;
+        if (!Array.isArray(data)) return;
+
+        for (const record of data) {
+          const local = this.dbService.db.prepare("SELECT * FROM projects WHERE id = ?").get(record.id);
+          if (!local || new Date(record.updated_at).getTime() > new Date(local.updated_at).getTime()) {
+            this.dbService.db
+                .prepare(
+                    `INSERT INTO projects (id, name, description, owner_id, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                 name=excluded.name,
+                 description=excluded.description,
+                 owner_id=excluded.owner_id,
+                 created_at=excluded.created_at,
+                 updated_at=excluded.updated_at`
+                )
+                .run(record.id, record.name, record.description, record.owner_id, record.created_at, record.updated_at);
+          }
+        }
+
+        this.sendToUI("sync:pull", { count: data.length });
+        console.log(`[Sync] Pulled ${data.length} projects`);
+      } catch (err) {
+        console.error("[Sync] Pull failed:", err);
+      }
+    } else if (tabel === 'teams') {
+      try {
+        const { data, error } = await this.client.from("teams").select("*").order("updated_at", { ascending: true });
+        if (error) throw error;
+        if (!Array.isArray(data)) return;
+
+        for (const record of data) {
+          const local = this.dbService.db.prepare("SELECT * FROM teams WHERE id = ?").get(record.id);
+          if (!local || new Date(record.updated_at).getTime() > new Date(local.updated_at).getTime()) {
+            this.dbService.db
+                .prepare(
+                    `INSERT INTO teams (id, project_id, name, description, created_at, updated_at)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                 project_id=excluded.project_id,
+                 name=excluded.name,
+                 description=excluded.description,
+                 created_at=excluded.created_at,
+                 updated_at=excluded.updated_at`
+                )
+                .run(record.id, record.project_id, record.name, record.description, record.created_at, record.updated_at);
+          }
+        }
+
+        this.sendToUI("sync:pull", { count: data.length });
+        console.log(`[Sync] Pulled ${data.length} teams`);
+      } catch (err) {
+        console.error("[Sync] Pull failed:", err);
+      }
+    }
+  }
+
+  async pullAllRemoteUpdates() {
+    const channels = ["tasks", "projects", "teams", "revisions"];
+    for (const channel of channels) {
+      await this.pullRemoteUpdates(channel);
     }
   }
 

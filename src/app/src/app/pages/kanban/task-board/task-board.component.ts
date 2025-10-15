@@ -30,7 +30,7 @@ import {TaskDetailDialogComponent} from '../task-detail-dialog/task-detail-dialo
   standalone: true
 })
 export class TaskBoardComponent implements OnInit, OnDestroy {
-  @HostBinding('class.dark-mode') darkMode = false;
+  @HostBinding('class.dark-mode') darkMode = true;
 
   columns = [
     { id: 'todo', title: 'To do', tasks: [] as Task[] },
@@ -48,11 +48,6 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadTasks().then();
-
-    // detect dark mode
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    this.darkMode = media.matches;
-    media.addEventListener('change', (e) => (this.darkMode = e.matches));
 
     // subscribe to realtime remote updates forwarded by Electron main
     this.unsubRemote = this.ipc.onRemoteUpdateFn((payload: any) => {
@@ -174,10 +169,6 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   // Manual refresh helper
   refresh() {
     this.loadTasks().then();
-  }
-
-  toggleTheme() {
-    this.darkMode = !this.darkMode;
   }
 
   openTaskDetail(task: Task) {

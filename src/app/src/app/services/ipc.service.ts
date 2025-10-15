@@ -60,4 +60,28 @@ export class IpcService {
   async downloadAttachment(supabasePath: string) {
     return window.electronAPI.downloadAttachment(supabasePath);
   }
+
+  async createProject(payload: any) {
+    return window.electronAPI.createProject(payload);
+  }
+  async listProjects() {
+    return window.electronAPI.listProjects();
+  }
+  async updateProject(payload: any) {
+    return window.electronAPI.updateProject(payload);
+  }
+
+  async createTeam(payload: any) {
+    return window.electronAPI.createTeam(payload);
+  }
+  async listTeams(projectId?: string) {
+    return window.electronAPI.listTeams(projectId);
+  }
+  async updateTeam(payload: any) {
+    return window.electronAPI.updateTeam(payload);
+  }
+
+  async pullRemoteUpdates() {
+    return window.electronAPI.pullRemoteUpdates();
+  }
 }

@@ -1,0 +1,15 @@
+<div class="p-6">
+  <h2 class="text-lg font-semibold mb-4">Teams for {{ project?.name }}</h2>
+  <button (click)="createTeam()" class="btn">New Team</button>
+  <ul>
+    <li *ngFor="let t of teams" class="border p-2 my-2 rounded">
+      <div class="flex justify-between">
+        <div>
+          <h3 class="font-medium">{{ t.name }}</h3>
+          <p class="text-sm text-gray-600">{{ t.description }}</p>
+        </div>
+        <button (click)="editTeam(t)" class="btn-secondary">Edit</button>
+      </div>
+    </li>
+  </ul>
+</div>
