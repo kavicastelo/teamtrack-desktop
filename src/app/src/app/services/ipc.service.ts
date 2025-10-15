@@ -39,6 +39,9 @@ export class IpcService {
   async listTasks() {
     return window.electronAPI.listTasks();
   }
+  async deleteTask(id: string) {
+    return window.electronAPI.deleteTask(id);
+  }
   async rawQuery(sql: string, params?: any[]) {
     return window.electronAPI.rawQuery(sql, params);
   }

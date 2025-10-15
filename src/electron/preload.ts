@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from "electron";
 contextBridge.exposeInMainWorld("electronAPI", {
     createTask: (payload: any) => ipcRenderer.invoke("task:create", payload),
     updateTask: (payload: any) => ipcRenderer.invoke("task:update", payload),
+    deleteTask: (id: string) => ipcRenderer.invoke("task:delete", id),
     listTasks: () => ipcRenderer.invoke("task:list"),
     rawQuery: (sql: string, params?: any[]) => ipcRenderer.invoke("raw:query", sql, params),
     onPullUpdate: (cb: (data: any) => void) => {

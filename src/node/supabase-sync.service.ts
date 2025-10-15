@@ -6,8 +6,8 @@ import fs from "fs";
 import { attachments } from "../drizzle/shema";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
-import dns from "dns";
 import { URL } from "url";
+import dns from "dns/promises";
 
 export class SupabaseSyncService extends EventEmitter {
   private client: SupabaseClient;
@@ -64,6 +64,8 @@ export class SupabaseSyncService extends EventEmitter {
 
   /** Robust network detection with DNS + HTTP fallback; re-subscribes on reconnect */
   private monitorNetwork() {
+    if (this.networkCheckTimer) clearTimeout(this.networkCheckTimer);
+
     const supabaseUrl = this.supabaseUrl || "";
     let host = "supabase.io";
 
@@ -75,54 +77,65 @@ export class SupabaseSyncService extends EventEmitter {
 
     let consecutiveFailures = 0;
     let consecutiveSuccesses = 0;
-    const threshold = 2; // how many checks in a row before changing status
+    const threshold = 2;
+    let checking = false;
+    let reconnecting = false;
 
     const check = async () => {
+      if (checking) return;
+      checking = true;
+
       let networkOk = false;
 
       try {
-        // DNS check
-        await new Promise<void>((resolve, reject) => {
-          dns.lookup(host, (err) => (err ? reject(err) : resolve()));
-        });
-
-        // Optional HTTP check
-        if (supabaseUrl && typeof fetch !== "undefined") {
-          const controller = typeof AbortController !== "undefined" ? new AbortController() : undefined;
-          const timeout = setTimeout(() => controller?.abort(), 3000);
-          try {
-            await fetch(supabaseUrl, { method: "HEAD", signal: controller?.signal });
-            networkOk = true;
-          } catch {
-            // HEAD failed but DNS OK — still online
-            networkOk = true;
-          } finally {
-            clearTimeout(timeout);
-          }
-        } else {
+        await dns.lookup(host);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        try {
+          const healthUrl = `${supabaseUrl}/auth/v1/health`;
+          const res = await fetch(healthUrl, { signal: controller.signal });
+          // Any HTTP response means we’re online, even if 401/403/etc.
+          if (res.status >= 200 || res.status < 600) networkOk = true;
+        } catch {
+          // DNS OK but fetch failed — assume online
           networkOk = true;
+        } finally {
+          clearTimeout(timeout);
         }
       } catch {
         networkOk = false;
+      } finally {
+        checking = false;
       }
 
-      // Debounce logic
+      // Debounce transitions
       if (networkOk) {
         consecutiveSuccesses++;
         consecutiveFailures = 0;
 
         if (!this.online && consecutiveSuccesses >= threshold) {
           this.online = true;
-          console.log("[Sync] ✅ Back online — resuming sync...");
           this.sendToUI("sync:status", { online: true });
-          await this.recreateRealtimeSubscriptions();
-          this.pushLocalRevisions().catch((e) => console.error("[Sync] resume push error:", e));
-          this.pullRemoteUpdates().catch((e) => console.error("[Sync] resume pull error:", e));
+
+          if (!reconnecting) {
+            console.log("[Sync] ✅ Back online — resuming sync...");
+            reconnecting = true;
+            try {
+              await this.recreateRealtimeSubscriptions();
+              await this.pushLocalRevisions();
+              await this.pullRemoteUpdates();
+            } catch (e) {
+              console.error("[Sync] reconnect error:", e);
+            } finally {
+              reconnecting = false;
+            }
+          }
+        } else {
+          this.sendToUI("sync:status", { online: true });
         }
       } else {
         consecutiveFailures++;
         consecutiveSuccesses = 0;
-
         if (this.online && consecutiveFailures >= threshold) {
           this.online = false;
           console.warn("[Sync] ⚠️ Offline mode activated.");
@@ -131,8 +144,12 @@ export class SupabaseSyncService extends EventEmitter {
       }
     };
 
-    check().catch((e) => console.error("[Sync] Initial network check failed:", e));
-    this.networkCheckTimer = setInterval(() => check().catch(console.error), 10000);
+    const loop = async () => {
+      await check().catch(console.error);
+      this.networkCheckTimer = setTimeout(loop, 10000);
+    };
+
+    loop().then();
   }
 
   private async recreateRealtimeSubscriptions() {
@@ -231,11 +248,11 @@ export class SupabaseSyncService extends EventEmitter {
       if (!Array.isArray(data)) return;
 
       for (const record of data) {
-        const local = this.dbService.prepare("SELECT * FROM tasks WHERE id = ?").get(record.id);
+        const local = this.dbService.db.prepare("SELECT * FROM tasks WHERE id = ?").get(record.id);
         if (!local || new Date(record.updated_at).getTime() > new Date(local.updated_at).getTime()) {
-          this.dbService
+          this.dbService.db
               .prepare(
-                  `INSERT INTO tasks (id, project_id, title, description, status, assignee, updated_at, created_at)
+                  `INSERT INTO tasks (id, project_id, title, description, status, assignee, updated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(id) DO UPDATE SET
                  project_id=excluded.project_id,
@@ -243,8 +260,7 @@ export class SupabaseSyncService extends EventEmitter {
                  description=excluded.description,
                  status=excluded.status,
                  assignee=excluded.assignee,
-                 updated_at=excluded.updated_at
-                 created_at=excluded.created_at`
+                 updated_at=excluded.updated_at`
               )
               .run(record.id, record.project_id, record.title, record.description, record.status, record.assignee, record.updated_at);
         }
