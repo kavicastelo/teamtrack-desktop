@@ -58,3 +58,127 @@
   0%, 100% { opacity: 0.7; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.2); }
 }
+
+$app-bg: #121212;
+$surface: #1e1e1e;
+$accent: #00bcd4;
+$text-light: #e0e0e0;
+$text-dim: #9e9e9e;
+$online: #00e676;
+$offline: #ff5252;
+
+.app-container {
+  height: 100vh;
+  background: $app-bg;
+  color: $text-light;
+}
+
+.app-sidenav {
+  width: 240px;
+  background-color: $surface;
+  color: $text-light;
+  display: flex;
+  flex-direction: column;
+  padding-top: 1rem;
+
+  .logo {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    font-size: 1.2rem;
+    padding: 0 1rem 1rem 1rem;
+    mat-icon {
+      margin-right: 0.5rem;
+      color: $accent;
+    }
+  }
+
+  .nav-list {
+    a {
+      color: $text-dim;
+
+      &:hover {
+        background: rgba($accent, 0.1);
+        color: $text-light;
+      }
+      &.active {
+        background: rgba($accent, 0.2);
+        color: $accent;
+      }
+      mat-icon {
+        margin-right: .5rem;
+        font-size: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+  }
+}
+
+.app-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: $surface !important;
+  color: $text-light;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+
+  .left {
+    display: flex;
+    align-items: center;
+
+    .mobile-menu {
+      display: none;
+      margin-right: 0.5rem;
+    }
+  }
+
+  .right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+}
+
+.sync-status {
+  font-size: 0.85rem;
+
+  .online {
+    color: $online;
+  }
+
+  .offline {
+    color: $offline;
+  }
+
+  .text-green-500 {
+    color: $online;
+  }
+
+  .text-yellow-500 {
+    color: #ffeb3b;
+  }
+}
+
+.router-container {
+  padding: 1rem 2rem;
+  background: $app-bg;
+  height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .app-sidenav {
+    width: 200px;
+  }
+
+  .mobile-menu {
+    display: inline-flex !important;
+  }
+}

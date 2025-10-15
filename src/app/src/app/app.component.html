@@ -1,18 +1,97 @@
-<div class="sync-status" *ngIf="syncStatus$ | async as s">
-  <!-- online/offline -->
-  <span *ngIf="s.type === 'status'"
-        [ngClass]="s.online ? 'online' : 'offline'">
-    {{ s.label }}
-  </span>
+<mat-sidenav-container class="app-container" autosize>
 
-  <!-- pull / remote update -->
-  <span *ngIf="s.type !== 'status'"
-        [ngClass]="{
-          'text-green-500': s.type === 'pull',
-          'text-yellow-500': s.type === 'remoteUpdate'
-        }">
-    🔁 {{ s.label }}
-  </span>
-</div>
+  <!-- Sidebar Navigation -->
+  <mat-sidenav mode="side" opened class="app-sidenav">
+    <div class="logo">
+      <mat-icon>groups</mat-icon>
+      <span class="app-title">TeamTrack</span>
+    </div>
 
-<router-outlet/>
+    <mat-nav-list class="nav-list">
+      <a mat-list-item routerLink="/dashboard" routerLinkActive="active">
+        <mat-icon>dashboard</mat-icon>
+        <span>Dashboard</span>
+      </a>
+      <a mat-list-item routerLink="/projects" routerLinkActive="active">
+        <mat-icon>folder_open</mat-icon>
+        <span>Projects</span>
+      </a>
+      <a mat-list-item routerLink="/tasks" routerLinkActive="active">
+        <mat-icon>check_circle</mat-icon>
+        <span>Tasks</span>
+      </a>
+      <a mat-list-item routerLink="/time-tracking" routerLinkActive="active">
+        <mat-icon>timer</mat-icon>
+        <span>Time Tracking</span>
+      </a>
+      <a mat-list-item routerLink="/files" routerLinkActive="active">
+        <mat-icon>attach_file</mat-icon>
+        <span>Files</span>
+      </a>
+      <a mat-list-item routerLink="/team" routerLinkActive="active">
+        <mat-icon>people</mat-icon>
+        <span>Team</span>
+      </a>
+      <a mat-list-item routerLink="/analytics" routerLinkActive="active">
+        <mat-icon>insights</mat-icon>
+        <span>Analytics</span>
+      </a>
+      <a mat-list-item routerLink="/settings" routerLinkActive="active">
+        <mat-icon>settings</mat-icon>
+        <span>Settings</span>
+      </a>
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <!-- Main Content -->
+  <mat-sidenav-content class="app-content">
+
+    <!-- Top Toolbar -->
+    <mat-toolbar color="primary" class="app-toolbar" fxLayoutAlign="space-between center">
+      <div class="left">
+        <button mat-icon-button (click)="toggleDrawer()" class="mobile-menu">
+          <mat-icon>menu</mat-icon>
+        </button>
+        <span class="section-title">{{ currentSectionTitle }}</span>
+      </div>
+
+      <div class="right">
+        <!-- Sync / Status -->
+        <div class="sync-status" *ngIf="syncStatus$ | async as s">
+          <span *ngIf="s.type === 'status'" [ngClass]="s.online ? 'online' : 'offline'">
+            {{ s.label }}
+          </span>
+          <span *ngIf="s.type !== 'status'" [ngClass]="{
+            'text-green-500': s.type === 'pull',
+            'text-yellow-500': s.type === 'remoteUpdate'
+          }">
+            🔁 {{ s.label }}
+          </span>
+          <button *ngIf="s.online" mat-icon-button color="warn" (click)="pullOrigin()" matTooltip="This will overwrite your local changes">
+            <mat-icon>sync</mat-icon>
+          </button>
+        </div>
+
+        <button mat-icon-button>
+          <mat-icon>notifications</mat-icon>
+        </button>
+        <button mat-icon-button [matMenuTriggerFor]="profileMenu">
+          <mat-icon>account_circle</mat-icon>
+        </button>
+        <mat-menu #profileMenu="matMenu">
+          <button mat-menu-item routerLink="/profile">
+            <mat-icon>person</mat-icon> Profile
+          </button>
+          <button mat-menu-item (click)="logout()">
+            <mat-icon>logout</mat-icon> Logout
+          </button>
+        </mat-menu>
+      </div>
+    </mat-toolbar>
+
+    <!-- Routed Page -->
+    <main class="router-container">
+      <router-outlet></router-outlet>
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

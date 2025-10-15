@@ -178,6 +178,16 @@ app.whenReady().then(async () => {
         }
     });
 
+    ipcMain.handle("db:createProject", (_, payload) => dbService.createProject(payload));
+    ipcMain.handle("db:listProjects", () => dbService.listProjects());
+    ipcMain.handle("db:updateProject", (_, payload) => dbService.updateProject(payload));
+
+    ipcMain.handle("db:createTeam", (_, payload) => dbService.createTeam(payload));
+    ipcMain.handle("db:listTeams", (_, projectId) => dbService.listTeams(projectId));
+    ipcMain.handle("db:updateTeam", (_, payload) => dbService.updateTeam(payload));
+
+    ipcMain.handle("db:originPull", async (_) => syncService.pullAllRemoteUpdates());
+
     app.on("activate", () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });

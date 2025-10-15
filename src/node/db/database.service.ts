@@ -54,7 +54,7 @@ export class DatabaseService {
     }
 
     this.db = new Database(this.tmpPath, { verbose: (message: unknown, ...additionalArgs: unknown[]) => {
-        console.log("[DB]", message, ...additionalArgs);
+        // console.log("[DB]", message, ...additionalArgs);
       } });
     this.orm = drizzle(this.db);
     await this.ensureSchema();
@@ -62,6 +62,40 @@ export class DatabaseService {
 
   private async ensureSchema() {
     this.db!.exec(`
+      CREATE TABLE IF NOT EXISTS projects (
+                                            id TEXT PRIMARY KEY,
+                                            name TEXT NOT NULL,
+                                            description TEXT,
+                                            owner_id TEXT,
+                                            created_at INTEGER,
+                                            updated_at INTEGER
+      );
+
+      CREATE TABLE IF NOT EXISTS teams (
+                                         id TEXT PRIMARY KEY,
+                                         project_id TEXT,
+                                         name TEXT NOT NULL,
+                                         description TEXT,
+                                         created_at INTEGER,
+                                         updated_at INTEGER
+      );
+
+      CREATE TABLE IF NOT EXISTS team_members (
+                                                id TEXT PRIMARY KEY,
+                                                team_id TEXT,
+                                                user_id TEXT,
+                                                role TEXT,
+                                                created_at INTEGER
+      );
+
+      CREATE TABLE IF NOT EXISTS users (
+                                         id TEXT PRIMARY KEY,
+                                         email TEXT UNIQUE,
+                                         full_name TEXT,
+                                         role TEXT,
+                                         created_at INTEGER
+      );
+
       CREATE TABLE IF NOT EXISTS tasks (
         id TEXT PRIMARY KEY,
         project_id TEXT,
@@ -238,5 +272,85 @@ export class DatabaseService {
         JSON.stringify(e.payload || {}),
         Date.now()
     );
+  }
+
+  // PROJECTS
+  createProject(payload: any) {
+    const id = payload.id || uuidv4();
+    payload.id = id;
+    const now = Date.now();
+    payload.updated_at = now;
+    payload.created_at = now;
+    this.db!.prepare(`
+    INSERT INTO projects (id, name, description, owner_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(id, payload.name, payload.description || '', payload.owner_id || null, now, now);
+
+    this.db!.prepare(`
+    INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+    VALUES (?, ?, ?, ?, ?, ?, 0)
+  `).run(uuidv4(), 'projects', id, 1, JSON.stringify(payload), now);
+
+    return { id, ...payload, created_at: now, updated_at: now };
+  }
+
+  listProjects() {
+    return this.db!.prepare(`SELECT * FROM projects ORDER BY updated_at DESC`).all();
+  }
+
+  updateProject(payload: any) {
+    if (!payload.id) throw new Error("Missing project ID");
+    const now = Date.now();
+    this.db!.prepare(`
+    UPDATE projects SET name=?, description=?, updated_at=? WHERE id=?
+  `).run(payload.name, payload.description || '', now, payload.id);
+
+    this.db!.prepare(`
+    INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+    VALUES (?, ?, ?, ?, ?, ?, 0)
+  `).run(crypto.randomUUID(), 'projects', payload.id, Date.now(), JSON.stringify(payload), now);
+
+    return { ...payload, updated_at: now };
+  }
+
+// TEAMS
+  createTeam(payload: any) {
+    const id = payload.id || uuidv4();
+    payload.id = id;
+    const now = Date.now();
+    payload.updated_at = now;
+    payload.created_at = now;
+    this.db!.prepare(`
+    INSERT INTO teams (id, project_id, name, description, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(id, payload.project_id, payload.name, payload.description || '', now, now);
+
+    this.db!.prepare(`
+    INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+    VALUES (?, ?, ?, ?, ?, ?, 0)
+  `).run(uuidv4(), 'teams', id, 1, JSON.stringify(payload), now);
+
+    return { id, ...payload, created_at: now, updated_at: now };
+  }
+
+  listTeams(projectId?: string) {
+    if (projectId)
+      return this.db!.prepare(`SELECT * FROM teams WHERE project_id=? ORDER BY updated_at DESC`).all(projectId);
+    return this.db!.prepare(`SELECT * FROM teams ORDER BY updated_at DESC`).all();
+  }
+
+  updateTeam(payload: any) {
+    if (!payload.id) throw new Error("Missing team ID");
+    const now = Date.now();
+    this.db!.prepare(`
+    UPDATE teams SET name=?, description=?, updated_at=? WHERE id=?
+  `).run(payload.name, payload.description || '', now, payload.id);
+
+    this.db!.prepare(`
+    INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+    VALUES (?, ?, ?, ?, ?, ?, 0)
+  `).run(crypto.randomUUID(), 'teams', payload.id, Date.now(), JSON.stringify(payload), now);
+
+    return { ...payload, updated_at: now };
   }
 }

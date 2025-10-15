@@ -1,0 +1,16 @@
+.dialog-dark-theme {
+  background: #1e1e1e;
+  color: #e0e0e0;
+
+  mat-form-field {
+    color: #e0e0e0;
+  }
+
+  input, textarea {
+    color: #e0e0e0;
+  }
+
+  .mat-mdc-dialog-surface {
+    background-color: #1e1e1e !important;
+  }
+}

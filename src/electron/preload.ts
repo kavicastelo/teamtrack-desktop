@@ -24,4 +24,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     uploadAttachment: (taskId: string) => ipcRenderer.invoke("upload-attachment", taskId),
     downloadAttachment: (path: string) => ipcRenderer.invoke("download-attachment", path),
     listAttachments: (taskId: string) => ipcRenderer.invoke("list-attachments", taskId),
+    createProject: (payload) => ipcRenderer.invoke('db:createProject', payload),
+    listProjects: () => ipcRenderer.invoke('db:listProjects'),
+    updateProject: (payload) => ipcRenderer.invoke('db:updateProject', payload),
+    createTeam: (payload) => ipcRenderer.invoke('db:createTeam', payload),
+    listTeams: (projectId) => ipcRenderer.invoke('db:listTeams', projectId),
+    updateTeam: (payload) => ipcRenderer.invoke('db:updateTeam', payload),
+    pullRemoteUpdates: () => ipcRenderer.invoke('db:originPull'),
 });

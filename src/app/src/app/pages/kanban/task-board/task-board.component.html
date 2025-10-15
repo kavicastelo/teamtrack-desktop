@@ -1,11 +1,6 @@
 <div class="task-board" [class.dark-mode]="darkMode">
   <div class="header">
     <div class="left">
-      <h2>🗂️ Task Board
-        <button mat-stroked-button (click)="toggleTheme()">
-          {{ darkMode ? "☀️ Light" : "🌙 Dark" }}
-        </button>
-      </h2>
       <button (click)="refresh()" mat-stroked-button color="accent">Refresh</button>
     </div>
     <div class="right">
