@@ -42,6 +42,7 @@ import {MatIcon} from '@angular/material/icon';
 export class TaskDetailDialogComponent implements OnInit {
   task: Task;
   saving = false;
+  deleting = false;
   error: string | null = null;
 
   attachments: any[] = [];
@@ -68,6 +69,19 @@ export class TaskDetailDialogComponent implements OnInit {
       this.error = 'Failed to update task';
     } finally {
       this.saving = false;
+    }
+  }
+
+  async delete() {
+    this.deleting = true;
+    try {
+      const deleted = await this.ipc.deleteTask(this.task.id);
+      this.dialogRef.close(deleted);
+    } catch (e) {
+      console.error(e);
+      this.error = 'Failed to delete task';
+    } finally {
+      this.deleting = false;
     }
   }
 

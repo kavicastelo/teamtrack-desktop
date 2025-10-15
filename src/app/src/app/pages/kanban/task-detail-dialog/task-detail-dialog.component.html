@@ -52,7 +52,10 @@
 
 <mat-dialog-actions align="end">
   <button mat-stroked-button (click)="cancel()">Cancel</button>
-  <button mat-flat-button color="primary" (click)="save()" [disabled]="saving">
+  <button mat-flat-button color="primary" (click)="save()" [disabled]="saving || deleting">
     {{ saving ? 'Saving...' : 'Save' }}
+  </button>
+  <button mat-flat-button color="danger" (click)="delete()" [disabled]="saving || deleting">
+    {{ deleting ? 'Deleting...' : 'Delete' }}
   </button>
 </mat-dialog-actions>

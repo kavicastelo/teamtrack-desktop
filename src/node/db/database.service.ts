@@ -213,6 +213,17 @@ export class DatabaseService {
     return { ...payload, updated_at: now };
   }
 
+  deleteTask(taskId: string) {
+    try {
+      this.db!.prepare(`DELETE FROM revisions WHERE object_id = ?`).run(taskId);
+      this.db!.prepare(`DELETE FROM tasks WHERE id = ?`).run(taskId);
+      return true;
+    } catch (err: any) {
+      console.error("[DB] deleteTask error:", err);
+      return false;
+    }
+  }
+
   async logEvent(e: any) {
     const id = uuidv4();
     this.db!.prepare(

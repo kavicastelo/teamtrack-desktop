@@ -27,3 +27,41 @@
   background: #1e1e1e;
   color: #e0e0e0;
 }
+
+.section-title {
+  margin-top: 20px;
+  font-weight: 600;
+}
+
+.attachments {
+  margin-top: 10px;
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    padding: 6px 0;
+    cursor: pointer;
+
+    mat-icon {
+      margin-right: 8px;
+      color: #90caf9;
+    }
+
+    span {
+      flex: 1;
+    }
+
+    small {
+      color: #aaa;
+    }
+
+    &:hover {
+      opacity: 0.8;
+    }
+  }
+
+  .empty {
+    color: #999;
+    font-style: italic;
+  }
+}

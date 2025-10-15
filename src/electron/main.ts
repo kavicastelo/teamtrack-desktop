@@ -11,15 +11,6 @@ let mainWindow: BrowserWindow | null = null;
 let dbService: DatabaseService;
 let syncService: SupabaseSyncService;
 
-export interface Attachment {
-    id: string;
-    taskId: string;
-    filename: string;
-    mimetype: string;
-    size: number;
-    supabasePath: string;
-}
-
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1280,
@@ -120,6 +111,23 @@ app.whenReady().then(async () => {
             return task;
         } catch (err: any) {
             console.error("[IPC] task:update error:", err);
+            throw err;
+        }
+    });
+
+// 🔹 Delete task
+    ipcMain.handle("task:delete", async (_e, taskId: string) => {
+        try {
+            const taskDeleted = dbService.deleteTask(taskId);
+            await dbService.logEvent({
+                action: "task:delete",
+                object_type: "task",
+                object_id: taskId,
+                payload: "task("+taskId+") deleted",
+            });
+            return taskDeleted;
+        } catch (err: any) {
+            console.error("[IPC] task:delete error:", err);
             throw err;
         }
     });
