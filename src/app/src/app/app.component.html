@@ -1,1 +1,18 @@
-<router-outlet />
+<div class="sync-status" *ngIf="syncStatus$ | async as s">
+  <!-- online/offline -->
+  <span *ngIf="s.type === 'status'"
+        [ngClass]="s.online ? 'online' : 'offline'">
+    {{ s.label }}
+  </span>
+
+  <!-- pull / remote update -->
+  <span *ngIf="s.type !== 'status'"
+        [ngClass]="{
+          'text-green-500': s.type === 'pull',
+          'text-yellow-500': s.type === 'remoteUpdate'
+        }">
+    🔁 {{ s.label }}
+  </span>
+</div>
+
+<router-outlet/>

@@ -55,7 +55,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     media.addEventListener('change', (e) => (this.darkMode = e.matches));
 
     // subscribe to realtime remote updates forwarded by Electron main
-    this.unsubRemote = this.ipc.onRemoteUpdate((payload: any) => {
+    this.unsubRemote = this.ipc.onRemoteUpdateFn((payload: any) => {
       try {
         // payload shape: { table, record } per main -> syncService emit
         if (payload?.table === 'tasks' && payload.record) {
@@ -155,7 +155,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
 
     try {
       // call update via IPC
-      await this.ipc.updateTask({ id: task.id, project_id: task.project_id, title: task.title, description: task.description, status: newStatus, assignee: task.assignee });
+      await this.ipc.updateTask({ id: task.id, project_id: task.project_id, title: task.title, description: task.description, status: newStatus, assignee: task.assignee, created_at: task.created_at });
       // success — local DB will be updated and sync service will propagate remotely
     } catch (err) {
       console.error('updateTask failed, rolling back', err);

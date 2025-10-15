@@ -66,6 +66,7 @@ app.whenReady().then(async () => {
         supabaseUrl: process.env.SUPABASE_URL!,
         supabaseKey: process.env.SUPABASE_ANON_KEY!,
         db: dbService,
+        mainWindow
     });
     await syncService.start();
 
@@ -131,11 +132,6 @@ app.whenReady().then(async () => {
             console.error("[IPC] raw:query error:", err);
             throw err;
         }
-    });
-
-// 🔹 Forward remote realtime updates to renderer
-    syncService.on("remote:applied", (_evt) => {
-        if (mainWindow) mainWindow.webContents.send("remote:update", _evt);
     });
 
     ipcMain.handle('upload-attachment', async (_, taskId: string) => {

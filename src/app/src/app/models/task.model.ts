@@ -6,4 +6,5 @@ export interface Task {
   status?: 'todo' | 'in-progress' | 'review' | 'done' | string;
   assignee?: string;
   updated_at?: number; // epoch ms
+  created_at?: number;
 }
