@@ -38,7 +38,8 @@ create table tasks (
                        estimate_minutes int null,
                        due_date timestamptz null,
                        metadata jsonb,
-                       updated_at timestamptz default now()
+                       updated_at timestamptz default now(),
+                       created_at timestamptz default now()
 );
 
 -- Attachments metadata (actual files to Supabase storage)

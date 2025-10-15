@@ -69,7 +69,8 @@ export class DatabaseService {
         description TEXT,
         status TEXT,
         assignee TEXT,
-        updated_at INTEGER
+        updated_at INTEGER,
+        created_at INTEGER
       );
 
       CREATE TABLE IF NOT EXISTS events (
@@ -139,9 +140,10 @@ export class DatabaseService {
     payload.id = id;
     const now = Date.now();
     payload.updated_at = now;
+    payload.created_at = now;
     this.db!.prepare(
-        `INSERT INTO tasks (id, project_id, title, description, status, assignee, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO tasks (id, project_id, title, description, status, assignee, updated_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
         id,
         payload.project_id || null,
@@ -149,6 +151,7 @@ export class DatabaseService {
         payload.description || "",
         payload.status || "todo",
         payload.assignee || null,
+        now,
         now
     );
 
@@ -180,7 +183,7 @@ export class DatabaseService {
 
     const stmt = this.db!.prepare(`
     UPDATE tasks
-    SET project_id = ?, title = ?, description = ?, status = ?, assignee = ?, updated_at = ?
+    SET project_id = ?, title = ?, description = ?, status = ?, assignee = ?, updated_at = ?, created_at = ?
     WHERE id = ?
   `);
     stmt.run(
@@ -190,6 +193,7 @@ export class DatabaseService {
         status || "todo",
         assignee || null,
         now,
+        payload.created_at,
         payload.id
     );
 
