@@ -12,7 +12,7 @@ import {DatePipe, NgClass, NgForOf, NgIf} from '@angular/common';
 import {Task} from '../../../models/task.model';
 import {MatButton} from '@angular/material/button';
 import {MatDialog} from '@angular/material/dialog';
-import {TaskDetailDialogComponent} from '../task-detail-dialog/task-detail-dialog.component';
+import {TaskDetailDialogComponent} from '../../../components/task-detail-dialog/task-detail-dialog.component';
 
 @Component({
   selector: 'app-task-board',

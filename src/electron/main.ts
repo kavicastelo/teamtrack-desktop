@@ -141,9 +141,10 @@ app.whenReady().then(async () => {
         try {
             const attachment = await syncService.downloadAttachment(payload.supabasePath);
             await dbService.logEvent({
+                actor: payload.userId,
                 action: "attachment:download",
                 object_type: "attachment",
-                object_id: payload.userId,
+                object_id: payload.id || 'ATTACHMENT',
                 payload: "user("+payload.userId+") downloaded file from "+attachment,
             });
             return attachment;
@@ -154,13 +155,14 @@ app.whenReady().then(async () => {
     });
 
     // Download and open attachment
-ipcMain.handle('open-attachment', async (_, payload: any) => {
+    ipcMain.handle('open-attachment', async (_, payload: any) => {
         try {
             const attachment = await syncService.openAttachment(payload.supabasePath);
             await dbService.logEvent({
+                actor: payload.userId,
                 action: "attachment:open",
                 object_type: "attachment",
-                object_id: payload.userId,
+                object_id: payload.id || 'ATTACHMENT',
                 payload: "user("+payload.userId+") opened file from "+attachment,
             });
             return attachment;

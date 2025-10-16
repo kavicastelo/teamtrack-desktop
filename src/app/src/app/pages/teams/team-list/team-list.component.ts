@@ -2,7 +2,7 @@ import {Component, Input, OnInit} from '@angular/core';
 import {IpcService} from '../../../services/ipc.service';
 import {NgForOf} from '@angular/common';
 import {MatDialog} from '@angular/material/dialog';
-import {TeamNameDialogComponent} from './team-name-dialog/team-name-dialog.component';
+import {TeamNameDialogComponent} from '../../../components/team-name-dialog/team-name-dialog.component';
 
 @Component({
   selector: 'app-team-list',
