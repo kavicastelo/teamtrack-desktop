@@ -1,0 +1,6 @@
+<h3 class="title">Viewing: {{project[0].name}}</h3>
+<p class="text">{{project[0].description}}</p>
+<p class="text-sm">last updated: {{project[0].updated_at | date}}</p>
+
+<app-task-board [projectId]="project[0].id"></app-task-board>
+<app-team-list [projectId]="project[0].id"></app-team-list>

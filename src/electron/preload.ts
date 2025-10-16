@@ -4,7 +4,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     createTask: (payload: any) => ipcRenderer.invoke("task:create", payload),
     updateTask: (payload: any) => ipcRenderer.invoke("task:update", payload),
     deleteTask: (id: string) => ipcRenderer.invoke("task:delete", id),
-    listTasks: () => ipcRenderer.invoke("task:list"),
+    listTasks: (projectId?: string) => ipcRenderer.invoke("task:list", projectId),
     rawQuery: (sql: string, params?: any[]) => ipcRenderer.invoke("raw:query", sql, params),
     onPullUpdate: (cb: (data: any) => void) => {
         const listener = (_event: any, payload: any) => cb(payload);

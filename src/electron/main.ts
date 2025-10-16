@@ -72,9 +72,9 @@ app.whenReady().then(async () => {
     });
 
 // 🔹 List tasks
-    ipcMain.handle("task:list", async () => {
+    ipcMain.handle("task:list", async (_e, projectId: string|null) => {
         try {
-            return dbService.listTasks();
+            return dbService.listTasks(projectId);
         } catch (err: any) {
             console.error("[IPC] task:list error:", err);
             throw err;
@@ -179,7 +179,7 @@ app.whenReady().then(async () => {
     });
 
     ipcMain.handle("db:createProject", (_, payload) => dbService.createProject(payload));
-    ipcMain.handle("db:listProjects", () => dbService.listProjects());
+    ipcMain.handle("db:listProjects", (_, payload) => dbService.listProjects(payload));
     ipcMain.handle("db:updateProject", (_, payload) => dbService.updateProject(payload));
 
     ipcMain.handle("db:createTeam", (_, payload) => dbService.createTeam(payload));

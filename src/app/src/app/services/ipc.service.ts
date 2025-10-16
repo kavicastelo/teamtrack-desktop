@@ -36,8 +36,8 @@ export class IpcService {
   async updateTask(payload: any) {
     return window.electronAPI.updateTask(payload);
   }
-  async listTasks() {
-    return window.electronAPI.listTasks();
+  async listTasks(projectId?: string|null) {
+    return window.electronAPI.listTasks(projectId);
   }
   async deleteTask(id: string) {
     return window.electronAPI.deleteTask(id);
@@ -64,8 +64,8 @@ export class IpcService {
   async createProject(payload: any) {
     return window.electronAPI.createProject(payload);
   }
-  async listProjects() {
-    return window.electronAPI.listProjects();
+  async listProjects(projectId?: string|null) {
+    return window.electronAPI.listProjects(projectId);
   }
   async updateProject(payload: any) {
     return window.electronAPI.updateProject(payload);
@@ -74,7 +74,7 @@ export class IpcService {
   async createTeam(payload: any) {
     return window.electronAPI.createTeam(payload);
   }
-  async listTeams(projectId?: string) {
+  async listTeams(projectId?: string|null) {
     return window.electronAPI.listTeams(projectId);
   }
   async updateTeam(payload: any) {

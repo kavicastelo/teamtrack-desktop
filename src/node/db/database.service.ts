@@ -198,7 +198,9 @@ export class DatabaseService {
     return { id, ...payload, updated_at: now };
   }
 
-  listTasks() {
+  listTasks(projectId?: string) {
+    if (projectId)
+      return this.db!.prepare(`SELECT * FROM tasks WHERE project_id=? ORDER BY updated_at DESC`).all(projectId);
     return this.db!.prepare(`SELECT * FROM tasks ORDER BY updated_at DESC`).all();
   }
 
@@ -294,7 +296,9 @@ export class DatabaseService {
     return { id, ...payload, created_at: now, updated_at: now };
   }
 
-  listProjects() {
+  listProjects(projectId?: string) {
+    if (projectId)
+      return this.db!.prepare(`SELECT * FROM projects WHERE id=? ORDER BY updated_at DESC`).all(projectId);
     return this.db!.prepare(`SELECT * FROM projects ORDER BY updated_at DESC`).all();
   }
 
