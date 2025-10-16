@@ -91,6 +91,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private mapRouteToTitle(url: string): string {
     if (url.includes('dashboard')) return '🧮 Dashboard';
     if (url.includes('projects')) return '📂 Projects';
+    if (url.includes('project')) return '📂 Project View';
     if (url.includes('tasks')) return '📋 Tasks';
     if (url.includes('time-tracking')) return '⌛ Time Tracking';
     if (url.includes('files')) return '📃 Files';

@@ -22,7 +22,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
         return () => ipcRenderer.removeListener("sync:status", listener);
     },
     uploadAttachment: (taskId: string) => ipcRenderer.invoke("upload-attachment", taskId),
-    downloadAttachment: (path: string) => ipcRenderer.invoke("download-attachment", path),
+    downloadAttachment: (payload: any) => ipcRenderer.invoke("download-attachment", payload),
+    openAttachment: (payload: any) => ipcRenderer.invoke("open-attachment", payload),
     listAttachments: (taskId: string) => ipcRenderer.invoke("list-attachments", taskId),
     createProject: (payload) => ipcRenderer.invoke('db:createProject', payload),
     listProjects: () => ipcRenderer.invoke('db:listProjects'),

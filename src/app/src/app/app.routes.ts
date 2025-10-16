@@ -6,4 +6,5 @@ export const routes: Routes = [
   { path: 'team', loadComponent: () => import('./pages/dashboard/team-list/team-list.component').then(m => m.TeamListComponent) },
   { path: 'projects', loadComponent: () => import('./pages/dashboard/project-list/project-list.component').then(m => m.ProjectListComponent) },
   { path: 'project/:id', loadComponent: () => import('./pages/dashboard/project-view/project-view.component').then(m => m.ProjectViewComponent) },
+  { path: 'files', loadComponent: () => import('./pages/files/files-list/files-list.component').then(m => m.FilesListComponent) },
 ];

@@ -36,17 +36,39 @@
   </div>
   <h3 class="section-title">📎 Attachments</h3>
   <div class="attachments">
-    <button mat-stroked-button color="accent" (click)="uploadAttachment()">Upload File</button>
+    <button
+      mat-stroked-button
+      color="accent"
+      (click)="uploadAttachment()"
+      [disabled]="uploading"
+    >
+      <mat-icon>upload</mat-icon>
+      {{ uploading ? 'Uploading...' : 'Upload File' }}
+    </button>
+
+    <!-- Upload progress -->
+    <div class="upload-progress" *ngIf="uploading">
+      <mat-progress-bar
+        color="accent"
+        [mode]="uploadProgress ? 'determinate' : 'indeterminate'"
+        [value]="uploadProgress"
+      ></mat-progress-bar>
+      <div class="upload-text">
+        <mat-icon class="spin">sync</mat-icon>
+        <span>{{ uploadFileName || 'Uploading file...' }}</span>
+        <small *ngIf="uploadProgress">{{ uploadProgress | number: '1.0-0' }}%</small>
+      </div>
+    </div>
 
     <div class="attachment-list" *ngIf="attachments.length > 0">
       <div *ngFor="let att of attachments" class="file-item" (click)="openAttachment(att)">
         <mat-icon>insert_drive_file</mat-icon>
-        <span>{{ att.filename }}</span>
-        <small>{{ (att.size / 1024) | number:'1.0-0' }} KB</small>
+        <span>{{ att.filename | truncateFilename: 20 }}</span>
+        <small>{{ att.size | fileSize }}</small>
       </div>
     </div>
 
-    <p *ngIf="attachments.length === 0" class="empty">No attachments yet</p>
+    <p *ngIf="attachments.length === 0 && !uploading" class="empty">No attachments yet</p>
   </div>
 </mat-dialog-content>
 

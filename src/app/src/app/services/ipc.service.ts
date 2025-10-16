@@ -42,6 +42,7 @@ export class IpcService {
   async deleteTask(id: string) {
     return window.electronAPI.deleteTask(id);
   }
+
   async rawQuery(sql: string, params?: any[]) {
     return window.electronAPI.rawQuery(sql, params);
   }
@@ -51,14 +52,18 @@ export class IpcService {
   onPullUpdateFn(cb: (payload: any) => void) {
     return window.electronAPI.onPullUpdate(cb);
   }
+
   async uploadAttachment(taskId: string) {
     return window.electronAPI.uploadAttachment(taskId);
   }
-  async listAttachments(taskId: string) {
+  async listAttachments(taskId?: string|null) {
     return window.electronAPI.listAttachments(taskId);
   }
-  async downloadAttachment(supabasePath: string) {
-    return window.electronAPI.downloadAttachment(supabasePath);
+  async downloadAttachment(payload: any) {
+    return window.electronAPI.downloadAttachment(payload);
+  }
+  async openAttachment(payload: any) {
+    return window.electronAPI.openAttachment(payload);
   }
 
   async createProject(payload: any) {

@@ -130,7 +130,7 @@ export class DatabaseService {
 
       CREATE TABLE IF NOT EXISTS attachments (
         id TEXT PRIMARY KEY,
-        task_id TEXT,
+        taskId TEXT,
         filename TEXT,
         mimetype TEXT,
         size INTEGER,
@@ -274,6 +274,12 @@ export class DatabaseService {
         JSON.stringify(e.payload || {}),
         Date.now()
     );
+
+    // Add revision entry for sync
+    this.db!.prepare(
+        `INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+       VALUES (?, ?, ?, ?, ?, ?, 0)`
+    ).run(uuidv4(), "events", id, 1, JSON.stringify(e), Date.now());
   }
 
   // PROJECTS
