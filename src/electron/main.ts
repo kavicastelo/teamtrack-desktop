@@ -62,24 +62,9 @@ app.whenReady().then(async () => {
     await syncService.start();
 
     /** IPC handlers */
-    ipcMain.handle("db:query", async (_e, sql: string, params?: any[]) => {
-        try {
-            return dbService.query(sql, params);
-        } catch (err: any) {
-            console.error("[IPC] db:query error:", err);
-            throw err;
-        }
-    });
 
 // 🔹 List tasks
-    ipcMain.handle("task:list", async (_e, projectId: string|null) => {
-        try {
-            return dbService.listTasks(projectId);
-        } catch (err: any) {
-            console.error("[IPC] task:list error:", err);
-            throw err;
-        }
-    });
+    ipcMain.handle("task:list", async (_e, projectId: string|null) => dbService.listTasks(projectId));
 
 // 🔹 Create task
     ipcMain.handle("task:create", async (_e, payload) => {
@@ -133,14 +118,7 @@ app.whenReady().then(async () => {
     });
 
 // 🔹 Raw query passthrough
-    ipcMain.handle("raw:query", async (_e, sql: string, params?: any[]) => {
-        try {
-            return dbService.query(sql, params);
-        } catch (err: any) {
-            console.error("[IPC] raw:query error:", err);
-            throw err;
-        }
-    });
+    ipcMain.handle("raw:query", async (_e, sql: string, params?: any[]) => dbService.query(sql, params));
 
     ipcMain.handle('upload-attachment', async (_, taskId: string) => {
         try {
@@ -149,7 +127,7 @@ app.whenReady().then(async () => {
                 action: "attachment:create",
                 object_type: "attachment",
                 object_id: attachment.id,
-                payload: "attachment("+attachment.filename+") uploaded to "+attachment.supabasePath,
+                payload: "attachment("+attachment.filename+") uploaded to "+attachment.supabase_path,
             });
             return attachment;
         } catch (err: any) {
@@ -158,33 +136,106 @@ app.whenReady().then(async () => {
         }
     });
 
-// Download and open file
-    ipcMain.handle('download-attachment', async (_, supabasePath: string) => {
+// Download to device
+    ipcMain.handle('download-attachment', async (_, payload: any) => {
         try {
-            return await syncService.downloadAttachment(supabasePath);
+            const attachment = await syncService.downloadAttachment(payload.supabasePath);
+            await dbService.logEvent({
+                action: "attachment:download",
+                object_type: "attachment",
+                object_id: payload.userId,
+                payload: "user("+payload.userId+") downloaded file from "+attachment,
+            });
+            return attachment;
         } catch (err: any) {
             console.error("[IPC] attachment:download error:", err);
             throw err;
         }
     });
 
-// List attachments for task
-    ipcMain.handle('list-attachments', async (_, taskId: string) => {
+    // Download and open attachment
+ipcMain.handle('open-attachment', async (_, payload: any) => {
         try {
-            return await syncService.listAttachments(taskId);
+            const attachment = await syncService.openAttachment(payload.supabasePath);
+            await dbService.logEvent({
+                action: "attachment:open",
+                object_type: "attachment",
+                object_id: payload.userId,
+                payload: "user("+payload.userId+") opened file from "+attachment,
+            });
+            return attachment;
         } catch (err: any) {
-            console.error("[IPC] attachment:list error:", err);
+            console.error("[IPC] attachment:open error:", err);
             throw err;
         }
     });
 
-    ipcMain.handle("db:createProject", (_, payload) => dbService.createProject(payload));
-    ipcMain.handle("db:listProjects", (_, payload) => dbService.listProjects(payload));
-    ipcMain.handle("db:updateProject", (_, payload) => dbService.updateProject(payload));
+// List attachments for task
+    ipcMain.handle('list-attachments', async (_, taskId: string|null) => syncService.listAttachments(taskId));
 
-    ipcMain.handle("db:createTeam", (_, payload) => dbService.createTeam(payload));
-    ipcMain.handle("db:listTeams", (_, projectId) => dbService.listTeams(projectId));
-    ipcMain.handle("db:updateTeam", (_, payload) => dbService.updateTeam(payload));
+    ipcMain.handle("db:createProject", async (_, payload) => {
+        try {
+            const project = dbService.createProject(payload);
+            await dbService.logEvent({
+                action: "project:create",
+                object_type: "project",
+                object_id: project.id,
+                payload: project,
+            });
+            return project;
+        } catch (err: any) {
+            console.error("[IPC] project:create error:", err);
+            throw err;
+        }
+    });
+    ipcMain.handle("db:listProjects", async (_, payload) => dbService.listProjects(payload));
+    ipcMain.handle("db:updateProject", async (_, payload) => {
+        try {
+            const project = dbService.updateProject(payload);
+            await dbService.logEvent({
+                action: "project:update",
+                object_type: "project",
+                object_id: project.id,
+                payload: project,
+            });
+            return project;
+        } catch (err: any) {
+            console.error("[IPC] project:update error:", err);
+            throw err;
+        }
+    });
+
+    ipcMain.handle("db:createTeam", async (_, payload) => {
+        try {
+            const team = dbService.createTeam(payload);
+            await dbService.logEvent({
+                action: "team:create",
+                object_type: "team",
+                object_id: team.id,
+                payload: team,
+            });
+            return team;
+        } catch (err: any) {
+            console.error("[IPC] team:create error:", err);
+            throw err;
+        }
+    });
+    ipcMain.handle("db:listTeams", async (_, projectId) => dbService.listTeams(projectId));
+    ipcMain.handle("db:updateTeam", async (_, payload) => {
+        try {
+            const team = dbService.updateTeam(payload);
+            await dbService.logEvent({
+                action: "team:update",
+                object_type: "team",
+                object_id: team.id,
+                payload: team,
+            });
+            return team;
+        } catch (err: any) {
+            console.error("[IPC] team:update error:", err);
+            throw err;
+        }
+    });
 
     ipcMain.handle("db:originPull", async (_) => syncService.pullAllRemoteUpdates());
 

@@ -34,34 +34,70 @@
 }
 
 .attachments {
-  margin-top: 10px;
+  margin-top: 1rem;
+
+  .upload-progress {
+    margin-top: 1rem;
+
+    .upload-text {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      color: #ccc;
+      margin-top: 0.5rem;
+
+      .spin {
+        animation: spin 1s linear infinite;
+        margin-right: 0.5rem;
+      }
+    }
+  }
+
+  .attachment-list {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
 
   .file-item {
     display: flex;
     align-items: center;
-    padding: 6px 0;
+    gap: 0.6rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background: #1a1a1a;
+    color: #e0e0e0;
     cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover {
+      background: #2a2a2a;
+    }
 
     mat-icon {
-      margin-right: 8px;
       color: #90caf9;
     }
 
-    span {
-      flex: 1;
-    }
-
     small {
-      color: #aaa;
-    }
-
-    &:hover {
-      opacity: 0.8;
+      color: #888;
+      margin-left: auto;
     }
   }
 
   .empty {
-    color: #999;
-    font-style: italic;
+    color: #777;
+    margin-top: 1rem;
+    text-align: center;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }

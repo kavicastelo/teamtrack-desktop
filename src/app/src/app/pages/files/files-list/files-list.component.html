@@ -1,0 +1,79 @@
+<div class="files-container mat-elevation-z2">
+  <mat-toolbar color="primary" class="toolbar">
+    <span>All Shared Files</span>
+    <span class="spacer"></span>
+    <button mat-icon-button (click)="refreshFiles()" aria-label="Refresh">
+      <mat-icon>refresh</mat-icon>
+    </button>
+    <button mat-icon-button (click)="createFile()" aria-label="Create">
+      <mat-icon>add</mat-icon>
+    </button>
+  </mat-toolbar>
+
+  <div class="files-list" *ngIf="files?.length; else emptyState">
+    <mat-card
+      class="file-card"
+      *ngFor="let file of files"
+      matRipple
+    >
+      <div class="file-icon">
+        <mat-icon>
+          {{ getFileIcon(file.filename) }}
+        </mat-icon>
+      </div>
+
+      <div class="file-info">
+        <div class="filename">{{ file.filename | truncateFilename: 25}}</div>
+        <div class="meta">
+          <span>{{ file.mimetype }}</span>
+          <span>• {{ file.size | fileSize }} </span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button
+          mat-icon-button
+          color="accent"
+          (click)="downloadFile(file); $event.stopPropagation()"
+          aria-label="Download"
+        >
+          <mat-icon>download</mat-icon>
+        </button>
+
+        <button
+          mat-icon-button
+          color="accent"
+          (click)="openFile(file); $event.stopPropagation()"
+          aria-label="Open"
+        >
+          <mat-icon>open_in_new</mat-icon>
+        </button>
+      </div>
+    </mat-card>
+  </div>
+
+  <ng-template #emptyState>
+    <div class="empty">
+      <mat-icon>insert_drive_file</mat-icon>
+      <p>No files available</p>
+    </div>
+  </ng-template>
+
+  <div class="notification-area">
+    <!-- Upload progress -->
+    <div class="upload-progress" *ngIf="uploading">
+      <mat-progress-bar
+        color="accent"
+        [mode]="uploadProgress ? 'determinate' : 'indeterminate'"
+        [value]="uploadProgress"
+      ></mat-progress-bar>
+      <div class="upload-text">
+        <mat-icon class="spin">sync</mat-icon>
+        <span>{{ uploadFileName || 'Uploading file...' }}</span>
+        <small *ngIf="uploadProgress">{{ uploadProgress | number: '1.0-0' }}%</small>
+      </div>
+    </div>
+
+    <div *ngIf="error" class="error">{{ error }}</div>
+  </div>
+</div>
