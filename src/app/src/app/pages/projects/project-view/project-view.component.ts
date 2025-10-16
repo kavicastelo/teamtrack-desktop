@@ -2,7 +2,7 @@ import {Component, inject, OnInit} from '@angular/core';
 import {ActivatedRoute} from '@angular/router';
 import {IpcService} from '../../../services/ipc.service';
 import {TaskBoardComponent} from '../../kanban/task-board/task-board.component';
-import {TeamListComponent} from '../team-list/team-list.component';
+import {TeamListComponent} from '../../teams/team-list/team-list.component';
 import {DatePipe} from '@angular/common';
 
 @Component({

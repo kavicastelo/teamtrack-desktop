@@ -1,7 +1,7 @@
 import {Component, OnInit} from '@angular/core';
 import {IpcService} from '../../../services/ipc.service';
 import {NgForOf} from '@angular/common';
-import {ProjectNameDialogComponent} from './project-name-dialog/project-name-dialog.component';
+import {ProjectNameDialogComponent} from '../../../components/project-name-dialog/project-name-dialog.component';
 import {MatDialog} from '@angular/material/dialog';
 import {Router} from '@angular/router';
 

@@ -88,7 +88,8 @@ export class FilesListComponent implements OnInit {
   async openFile(file: any) {
     const payload = {
       supabasePath: file.supabase_path,
-      userId: "user" //todo: add user id
+      userId: "user", //todo: add user id
+      id: file.id
     }
     await this.ipc.openAttachment(payload);
   }
@@ -96,7 +97,8 @@ export class FilesListComponent implements OnInit {
   async downloadFile(file: any) {
     const payload = {
       supabasePath: file.supabase_path,
-      userId: "user" //todo: add user id
+      userId: "user", //todo: add user id
+      id: file.id
     }
     await this.ipc.downloadAttachment(payload);
   }

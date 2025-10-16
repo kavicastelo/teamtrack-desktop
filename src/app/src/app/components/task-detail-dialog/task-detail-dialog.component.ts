@@ -1,5 +1,5 @@
 import {Component, Inject, OnInit} from '@angular/core';
-import {IpcService} from '../../../services/ipc.service';
+import {IpcService} from '../../services/ipc.service';
 import {
   MAT_DIALOG_DATA,
   MatDialogActions,
@@ -7,7 +7,7 @@ import {
   MatDialogRef,
   MatDialogTitle
 } from '@angular/material/dialog';
-import {Task} from '../../../models/task.model';
+import {Task} from '../../models/task.model';
 import {MatFormField, MatLabel} from '@angular/material/form-field';
 import {MatOption, MatSelect} from '@angular/material/select';
 import {MatInput} from '@angular/material/input';
@@ -16,9 +16,9 @@ import {DatePipe, DecimalPipe, NgForOf, NgIf} from '@angular/common';
 import {MatButton} from '@angular/material/button';
 import {MatIcon} from '@angular/material/icon';
 import {MatProgressBar} from '@angular/material/progress-bar';
-import {TruncatePipe} from '../../../components/pipes/TruncatePipe';
-import {TruncateFilenamePipe} from '../../../components/pipes/TruncateFilenamePipe';
-import {FileSizePipe} from '../../../components/pipes/FileSizePipe';
+import {TruncatePipe} from '../pipes/TruncatePipe';
+import {TruncateFilenamePipe} from '../pipes/TruncateFilenamePipe';
+import {FileSizePipe} from '../pipes/FileSizePipe';
 
 @Component({
   selector: 'app-task-detail-dialog',
@@ -134,7 +134,8 @@ export class TaskDetailDialogComponent implements OnInit {
   async openAttachment(att: any) {
     const payload = {
       supabasePath: att.supabase_path,
-      userId: "user" //todo: add user id
+      userId: "user", //todo: add user id
+      id: att.id
     }
     await this.ipc.downloadAttachment(payload);
   }

@@ -262,6 +262,8 @@ export class DatabaseService {
 
   async logEvent(e: any) {
     const id = uuidv4();
+    const now = Date.now();
+    e.created_at = now;
     this.db!.prepare(
         `INSERT INTO events (id, actor, action, object_type, object_id, payload, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
@@ -272,14 +274,14 @@ export class DatabaseService {
         e.object_type || null,
         e.object_id || null,
         JSON.stringify(e.payload || {}),
-        Date.now()
+        now
     );
 
     // Add revision entry for sync
     this.db!.prepare(
         `INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
        VALUES (?, ?, ?, ?, ?, ?, 0)`
-    ).run(uuidv4(), "events", id, 1, JSON.stringify(e), Date.now());
+    ).run(uuidv4(), "events", id, 1, JSON.stringify(e), now);
   }
 
   // PROJECTS
