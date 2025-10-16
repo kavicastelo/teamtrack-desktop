@@ -1,12 +1,18 @@
-import {Component, OnInit} from '@angular/core';
-import {MatDialogActions, MatDialogContent, MatDialogRef, MatDialogTitle} from '@angular/material/dialog';
+import {Component, Inject, OnInit} from '@angular/core';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogActions,
+  MatDialogContent,
+  MatDialogRef,
+  MatDialogTitle
+} from '@angular/material/dialog';
 import {IpcService} from '../../../../services/ipc.service';
 import {FormsModule} from '@angular/forms';
 import {MatButton} from '@angular/material/button';
 import {MatInput} from '@angular/material/input';
 import {MatFormField, MatLabel} from '@angular/material/form-field';
 import {MatOption, MatSelect} from '@angular/material/select';
-import {NgForOf} from '@angular/common';
+import {NgForOf, NgIf} from '@angular/common';
 
 @Component({
   selector: 'app-team-name-dialog',
@@ -21,7 +27,8 @@ import {NgForOf} from '@angular/common';
     MatLabel,
     MatSelect,
     MatOption,
-    NgForOf
+    NgForOf,
+    NgIf
   ],
   template: `
     <h2 mat-dialog-title>New Team</h2>
@@ -30,7 +37,7 @@ import {NgForOf} from '@angular/common';
         <mat-label>Team name</mat-label>
         <input matInput [(ngModel)]="name" placeholder="Enter name" />
       </mat-form-field>
-      <mat-form-field appearance="fill" style="width: 100%;">
+      <mat-form-field *ngIf="!projectId" appearance="fill" style="width: 100%;">
         <mat-label>Project</mat-label>
         <mat-select [(ngModel)]="selectedProject">
           <mat-option *ngFor="let project of projects" [value]="project">{{ project.name }}</mat-option>
@@ -54,15 +61,18 @@ export class TeamNameDialogComponent implements OnInit{
   description = '';
   projects: any[] = [];
   selectedProject: any = null;
+  projectId: string | null = null;
 
-  constructor(private dialogRef: MatDialogRef<TeamNameDialogComponent>, private ipc: IpcService) {}
+  constructor(private dialogRef: MatDialogRef<TeamNameDialogComponent>, @Inject(MAT_DIALOG_DATA) data:any, private ipc: IpcService) {
+    this.projectId = data?.projectId;
+  }
 
   async ngOnInit() {
     this.projects = await this.ipc.listProjects();
   }
 
   confirm() {
-    this.dialogRef.close({ project_id: this.selectedProject.id, name: this.name.trim(), description: this.description.trim() });
+    this.dialogRef.close({ project_id: this.projectId || this.selectedProject.id, name: this.name.trim(), description: this.description.trim() });
   }
 
   cancel() {

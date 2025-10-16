@@ -3,6 +3,7 @@ import {IpcService} from '../../../services/ipc.service';
 import {NgForOf} from '@angular/common';
 import {ProjectNameDialogComponent} from './project-name-dialog/project-name-dialog.component';
 import {MatDialog} from '@angular/material/dialog';
+import {Router} from '@angular/router';
 
 @Component({
   selector: 'app-project-list',
@@ -16,7 +17,7 @@ import {MatDialog} from '@angular/material/dialog';
 export class ProjectListComponent implements OnInit{
   projects: any[] = [];
 
-  constructor(private ipc: IpcService, private dialog: MatDialog) {}
+  constructor(private ipc: IpcService, private dialog: MatDialog, private router: Router) {}
 
   async ngOnInit() {
     this.projects = await this.ipc.listProjects();
@@ -36,6 +37,6 @@ export class ProjectListComponent implements OnInit{
   }
 
   selectProject(p: any) {
-    console.log('Selected:', p);
+    this.router.navigate([`/project/${p.id}`]).then();
   }
 }

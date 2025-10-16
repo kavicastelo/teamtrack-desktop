@@ -1,4 +1,4 @@
-import {Component, HostBinding, OnDestroy, OnInit} from '@angular/core';
+import {Component, HostBinding, Input, OnDestroy, OnInit} from '@angular/core';
 import {IpcService} from '../../../services/ipc.service';
 import {
   CdkDrag,
@@ -31,6 +31,7 @@ import {TaskDetailDialogComponent} from '../task-detail-dialog/task-detail-dialo
 })
 export class TaskBoardComponent implements OnInit, OnDestroy {
   @HostBinding('class.dark-mode') darkMode = true;
+  @Input() projectId: string | null = null;
 
   columns = [
     { id: 'todo', title: 'To do', tasks: [] as Task[] },
@@ -73,7 +74,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.error = null;
     try {
-      await this.ipc.listTasks().then((rows: Task[]) => {
+      await this.ipc.listTasks(this.projectId).then((rows: Task[]) => {
         this.populateColumns(rows || []);
       });
     } catch (err: any) {
@@ -98,7 +99,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     if (!title) return;
     try {
       // optimistic local id-less entry while waiting for DB
-      const created = await this.ipc.createTask({ title, status: 'todo' });
+      const created = await this.ipc.createTask({ project_id: this.projectId, title: title, status: 'todo' });
       // insert at top of todo column
       const todo = this.columns.find(c => c.id === 'todo')!;
       todo.tasks.unshift(created);
@@ -113,6 +114,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   applyRemoteTask(rec: any) {
     const t: Task = {
       id: rec.id,
+      project_id: rec.project_id,
       title: rec.title,
       description: rec.description,
       status: rec.status || 'todo',
