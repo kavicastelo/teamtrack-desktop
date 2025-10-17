@@ -90,10 +90,20 @@ export class DatabaseService {
 
       CREATE TABLE IF NOT EXISTS users (
                                          id TEXT PRIMARY KEY,
-                                         email TEXT UNIQUE,
+                                         email TEXT,
                                          full_name TEXT,
                                          role TEXT,
-                                         created_at INTEGER
+                                         avatar_url TEXT,
+                                         timezone TEXT,
+                                         calendar_sync_enabled INTEGER DEFAULT 0,
+                                         google_calendar_id TEXT,
+                                         available_times TEXT,
+                                         updated_at INTEGER
+      );
+
+      CREATE TABLE IF NOT EXISTS local_session (
+                                                 id TEXT PRIMARY KEY,
+                                                 session_encrypted TEXT
       );
 
       CREATE TABLE IF NOT EXISTS tasks (

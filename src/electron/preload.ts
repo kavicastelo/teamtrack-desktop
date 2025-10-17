@@ -1,6 +1,14 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electronAPI", {
+    auth: {
+        signInEmail: (email: string) => ipcRenderer.invoke('auth:signInEmail', email),
+        signInGoogle: () => ipcRenderer.invoke('auth:signInGoogle'),
+        handleCallback: (url: string) => ipcRenderer.invoke('auth:handleCallback', url),
+        restoreSession: () => ipcRenderer.invoke('auth:restoreSession'),
+        getUser: () => ipcRenderer.invoke('auth:getUser'),
+        signOut: () => ipcRenderer.invoke('auth:signOut'),
+    },
     createTask: (payload: any) => ipcRenderer.invoke("task:create", payload),
     updateTask: (payload: any) => ipcRenderer.invoke("task:update", payload),
     deleteTask: (id: string) => ipcRenderer.invoke("task:delete", id),

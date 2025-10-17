@@ -369,7 +369,7 @@ export class SupabaseSyncService extends EventEmitter {
 
                 for (const record of data) {
                     const local = this.dbService.db.prepare("SELECT * FROM revisions WHERE id = ?").get(record.id);
-                    if (!local || new Date(record.updated_at).getTime() > new Date(local.updated_at).getTime()) {
+                    if (!local || new Date(record.created_at).getTime() > new Date(local.created_at).getTime()) {
                         this.dbService.db
                             .prepare(
                                 `INSERT INTO revisions (id, object_type, object_id, origin_id, seq, payload, created_at,
@@ -468,7 +468,7 @@ export class SupabaseSyncService extends EventEmitter {
 
                 for (const record of data) {
                     const local = this.dbService.db.prepare("SELECT * FROM attachments WHERE id = ?").get(record.id);
-                    if (!local || new Date(record.updated_at).getTime() > new Date(local.created_at).getTime()) {
+                    if (!local || new Date(record.created_at).getTime() > new Date(local.created_at).getTime()) {
                         this.dbService.db
                             .prepare(
                                 `INSERT INTO attachments (id, task_id, filename, mimetype, size, supabase_path,
@@ -502,7 +502,7 @@ export class SupabaseSyncService extends EventEmitter {
 
                 for (const record of data) {
                     const local = this.dbService.db.prepare("SELECT * FROM events WHERE id = ?").get(record.id);
-                    if (!local || new Date(record.updated_at).getTime() > new Date(local.created_at).getTime()) {
+                    if (!local || new Date(record.created_at).getTime() > new Date(local.created_at).getTime()) {
                         this.dbService.db
                             .prepare(
                                 `INSERT INTO events (id, actor, action, object_type, object_id, payload, created_at)
@@ -529,24 +529,30 @@ export class SupabaseSyncService extends EventEmitter {
                 const {
                     data,
                     error
-                } = await this.client.from("users").select("*").order("created_at", {ascending: true});
+                } = await this.client.from("users").select("*").order("updated_at", {ascending: true});
                 if (error) throw error;
                 if (!Array.isArray(data)) return;
 
                 for (const record of data) {
                     const local = this.dbService.db.prepare("SELECT * FROM users WHERE id = ?").get(record.id);
-                    if (!local || new Date(record.updated_at).getTime() > new Date(local.created_at).getTime()) {
+                    if (!local || new Date(record.updated_at).getTime() > new Date(local.updated_at).getTime()) {
                         this.dbService.db
                             .prepare(
-                                `INSERT INTO users (id, email, full_name, role, created_at)
-                                 VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                                `INSERT INTO users (id, email, full_name, role, avatar_url, timezone, calendar_sync_enabled, google_calendar_id, available_times, updated_at, created_at)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
                                 UPDATE SET
                                     email=excluded.email,
                                     full_name=excluded.full_name,
                                     role=excluded.role,
+                                    avatar_url=excluded.avatar_url,
+                                    timezone=excluded.timezone,
+                                    calendar_sync_enabled=excluded.calendar_sync_enabled,
+                                    google_calendar_id=excluded.google_calendar_id,
+                                    available_times=excluded.available_times,
+                                    updated_at=excluded.updated_at,
                                     created_at=excluded.created_at`
                             )
-                            .run(record.id, record.email, record.full_name, record.role, record.created_at);
+                            .run(record.id, record.email, record.full_name, record.role, record.avatar_url, record.timezone, record.calendar_sync_enabled, record.google_calendar_id, record.available_times, record.updated_at, record.created_at);
                     }
                 }
 
@@ -566,7 +572,7 @@ export class SupabaseSyncService extends EventEmitter {
 
                 for (const record of data) {
                     const local = this.dbService.db.prepare("SELECT * FROM team_members WHERE id = ?").get(record.id);
-                    if (!local || new Date(record.updated_at).getTime() > new Date(local.created_at).getTime()) {
+                    if (!local || new Date(record.created_at).getTime() > new Date(local.created_at).getTime()) {
                         this.dbService.db
                             .prepare(
                                 `INSERT INTO team_members (id, team_id, user_id, role, created_at)
