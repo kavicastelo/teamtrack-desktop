@@ -1,15 +1,23 @@
-import {app, BrowserWindow, ipcMain} from "electron";
+import {app, BrowserWindow, ipcMain, shell} from "electron";
 import path from "path";
 import Store from "electron-store";
 import "dotenv/config";
 import {DatabaseService} from "../node/db/database.service.js";
 import {SupabaseSyncService} from "../node/supabase-sync.service.js";
 import crypto from "crypto";
+import {AuthService} from "./auth.service";
 
 const store = new Store();
 let mainWindow: BrowserWindow | null = null;
 let dbService: DatabaseService;
 let syncService: SupabaseSyncService;
+
+const authService: AuthService = new AuthService({
+    supabaseUrl: process.env.SUPABASE_URL!,
+    supabaseKey: process.env.SUPABASE_ANON_KEY!,
+    db: dbService,
+    mainWindow
+});
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -62,6 +70,33 @@ app.whenReady().then(async () => {
     await syncService.start();
 
     /** IPC handlers */
+// Email sign-in
+    ipcMain.handle('auth:signInEmail', async (_, email) => {
+        return await authService.signIn(email);
+    });
+
+// Google login
+    ipcMain.handle('auth:signInGoogle', async () => {
+        const url = await authService.signInWithGoogle();
+        await shell.openExternal(url);
+        return { url };
+    });
+
+// OAuth callback (from redirect URL)
+    ipcMain.handle('auth:handleCallback', async (_, url) => {
+        return await authService.handleCallback(url);
+    });
+
+// Restore session
+    ipcMain.handle('auth:restoreSession', async () => {
+        return await authService.restoreSession();
+    });
+
+// Get current user
+    ipcMain.handle('auth:getUser', () => authService.getCurrentUser());
+
+// Sign out
+    ipcMain.handle('auth:signOut', () => authService.signOut());
 
 // 🔹 List tasks
     ipcMain.handle("task:list", async (_e, projectId: string|null) => dbService.listTasks(projectId));
