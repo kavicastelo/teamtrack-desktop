@@ -38,14 +38,14 @@ export class SupabaseSyncService extends EventEmitter {
     }
 
     async start() {
-        console.log("[Sync] Starting realtime sync...");
+        this.sendToUI("sync:info", {message: "Starting sync..."});
         this.monitorNetwork();
         await this.startRealtimeSub();
         this.startPushLoop();
     }
 
     async stop() {
-        console.log("[Sync] Stopping...");
+        this.sendToUI("sync:info", {message: "Stopping sync..."});
         if (this.pushTimer) clearInterval(this.pushTimer);
         if (this.networkCheckTimer) clearInterval(this.networkCheckTimer);
 
@@ -56,7 +56,7 @@ export class SupabaseSyncService extends EventEmitter {
                     await this.client.removeChannel(ch);
                 }
             } catch (err) {
-                console.warn("[Sync] Warning removing channels on stop:", err);
+                this.sendToUI("sync:warning", {message: "Failed to remove channels on stop"});
             }
         }
         this.channels = [];
@@ -72,7 +72,7 @@ export class SupabaseSyncService extends EventEmitter {
         try {
             if (supabaseUrl) host = new URL(supabaseUrl).hostname || host;
         } catch {
-            console.warn("[Sync] Invalid Supabase URL; using fallback host:", host);
+            this.sendToUI("sync:warning", {message: "Invalid Supabase URL; using fallback host: "+host});
         }
 
         let consecutiveFailures = 0;
@@ -118,14 +118,14 @@ export class SupabaseSyncService extends EventEmitter {
                     this.sendToUI("sync:status", {online: true});
 
                     if (!reconnecting) {
-                        console.log("[Sync] ✅ Back online — resuming sync...");
+                        this.sendToUI("sync:info", {message: "Resuming sync..."});
                         reconnecting = true;
                         try {
                             await this.recreateRealtimeSubscriptions();
                             await this.pushLocalRevisions();
                             await this.pullAllRemoteUpdates();
                         } catch (e) {
-                            console.error("[Sync] reconnect error:", e);
+                            this.sendToUI("sync:error", {message: "Failed to reconnect", error: e});
                         } finally {
                             reconnecting = false;
                         }
@@ -138,7 +138,7 @@ export class SupabaseSyncService extends EventEmitter {
                 consecutiveSuccesses = 0;
                 if (this.online && consecutiveFailures >= threshold) {
                     this.online = false;
-                    console.warn("[Sync] ⚠️ Offline mode activated.");
+                    this.sendToUI("sync:warning", {message: "Offline mode activated"});
                     this.sendToUI("sync:status", {online: false});
                 }
             }
@@ -160,7 +160,7 @@ export class SupabaseSyncService extends EventEmitter {
             this.channels = [];
             await this.startRealtimeSub();
         } catch (err) {
-            console.error("[Sync] Failed to recreate subscriptions:", err);
+            this.sendToUI("sync:error", {message: "Failed to recreate subscriptions", error: err});
         }
     }
 
@@ -171,7 +171,7 @@ export class SupabaseSyncService extends EventEmitter {
             if (this.online) {
                 this.pushLocalRevisions().catch((err) => console.error("[Sync] pushLocalRevisions error:", err));
             } else {
-                console.log("[Sync] Skipping push (offline)");
+                this.sendToUI("sync:info", {message: "Skipping push (offline)"});
             }
         }, 7000);
     }
@@ -208,7 +208,7 @@ export class SupabaseSyncService extends EventEmitter {
 
                 this.sendToUI("sync:remoteUpdate", record);
             } catch (err) {
-                console.error("[Sync] handleRemoteChange error:", err);
+                this.sendToUI("sync:error", {message: "Failed to handle remote change", error: err});
             }
         } else if (table === 'revisions') {
             try {
@@ -232,8 +232,10 @@ export class SupabaseSyncService extends EventEmitter {
                     record.created_at,
                     record.synced,
                 ]);
+
+                this.sendToUI("sync:remoteUpdate", record);
             } catch (err) {
-                console.error("[Sync] handleRemoteChange error:", err);
+                this.sendToUI("sync:error", {message: "Failed to handle remote change", error: err});
             }
         } else if (table === 'projects') {
             try {
@@ -258,7 +260,7 @@ export class SupabaseSyncService extends EventEmitter {
 
                 this.sendToUI("sync:remoteUpdate", record);
             } catch (err) {
-                console.error("[Sync] handleRemoteChange error:", err);
+                this.sendToUI("sync:error", {message: "Failed to handle remote change", error: err});
             }
         } else if (table === 'teams') {
             try {
@@ -283,7 +285,7 @@ export class SupabaseSyncService extends EventEmitter {
 
                 this.sendToUI("sync:remoteUpdate", record);
             } catch (err) {
-                console.error("[Sync] handleRemoteChange error:", err);
+                this.sendToUI("sync:error", {message: "Failed to handle remote change", error: err});
             }
         }
     }
@@ -308,14 +310,14 @@ export class SupabaseSyncService extends EventEmitter {
 
                 await ch.subscribe((status) => {
                     if (status === "SUBSCRIBED") {
-                        console.log("[Sync] ✅ Realtime subscription active for " + channel);
+                        this.sendToUI("sync:success", {message: "Realtime subscription active for " + channel});
                         this.sendToUI("sync:status", {realtime: "connected"});
                     }
                 });
 
                 this.channels.push(ch);
             } catch (err) {
-                console.error("[Sync] startRealtimeSub failed:", err);
+                this.sendToUI("sync:error", {message: "Failed to start realtime subscription", error: err});
                 this.sendToUI("sync:status", {realtime: "error", message: String(err)});
             }
         }
@@ -352,9 +354,9 @@ export class SupabaseSyncService extends EventEmitter {
                 }
 
                 this.sendToUI("sync:pull", {count: data.length});
-                console.log(`[Sync] Pulled ${data.length} records`);
+                this.sendToUI("sync:success", {message: "Pulled " + data.length + " records"});
             } catch (err) {
-                console.error("[Sync] Pull failed:", err);
+                this.sendToUI("sync:error", {message: "Failed to pull records", error: err});
             }
         } else if (tabel === 'revisions') {
             try {
@@ -387,9 +389,9 @@ export class SupabaseSyncService extends EventEmitter {
                 }
 
                 this.sendToUI("sync:pull", {count: data.length});
-                console.log(`[Sync] Pulled ${data.length} revisions`);
+                this.sendToUI("sync:success", {message: "Pulled " + data.length + " revisions"});
             } catch (err) {
-                console.error("[Sync] Pull failed:", err);
+                this.sendToUI("sync:error", {message: "Failed to pull revisions", error: err});
             }
         } else if (tabel === 'projects') {
             try {
@@ -419,9 +421,9 @@ export class SupabaseSyncService extends EventEmitter {
                 }
 
                 this.sendToUI("sync:pull", {count: data.length});
-                console.log(`[Sync] Pulled ${data.length} projects`);
+                this.sendToUI("sync:success", {message: "Pulled " + data.length + " projects"});
             } catch (err) {
-                console.error("[Sync] Pull failed:", err);
+                this.sendToUI("sync:error", {message: "Failed to pull projects", error: err});
             }
         } else if (tabel === 'teams') {
             try {
@@ -451,9 +453,9 @@ export class SupabaseSyncService extends EventEmitter {
                 }
 
                 this.sendToUI("sync:pull", {count: data.length});
-                console.log(`[Sync] Pulled ${data.length} teams`);
+                this.sendToUI("sync:success", {message: "Pulled " + data.length + " teams"});
             } catch (err) {
-                console.error("[Sync] Pull failed:", err);
+                this.sendToUI("sync:error", {message: "Failed to pull teams", error: err});
             }
         } else if (tabel === 'attachments') {
             try {
@@ -485,9 +487,9 @@ export class SupabaseSyncService extends EventEmitter {
                 }
 
                 this.sendToUI("sync:pull", {count: data.length});
-                console.log(`[Sync] Pulled ${data.length} attachments`);
+                this.sendToUI("sync:success", {message: "Pulled " + data.length + " attachments"});
             } catch (err) {
-                console.error("[Sync] Pull failed:", err);
+                this.sendToUI("sync:error", {message: "Failed to pull attachments", error: err});
             }
         } else if (tabel === 'events') {
             try {
@@ -518,9 +520,9 @@ export class SupabaseSyncService extends EventEmitter {
                 }
 
                 this.sendToUI("sync:pull", {count: data.length});
-                console.log(`[Sync] Pulled ${data.length} events`);
+                this.sendToUI("sync:success", {message: "Pulled " + data.length + " events"});
             } catch (err) {
-                console.error("[Sync] Pull failed:", err);
+                this.sendToUI("sync:error", {message: "Failed to pull events", error: err});
             }
         } else if (tabel === 'users') {
             try {
@@ -549,9 +551,9 @@ export class SupabaseSyncService extends EventEmitter {
                 }
 
                 this.sendToUI("sync:pull", {count: data.length});
-                console.log(`[Sync] Pulled ${data.length} users`);
+                this.sendToUI("sync:success", {message: "Pulled " + data.length + " users"});
             } catch (err) {
-                console.error("[Sync] Pull failed:", err);
+                this.sendToUI("sync:error", {message: "Failed to pull users", error: err});
             }
         } else if (tabel === 'team_members') {
             try {
@@ -580,9 +582,9 @@ export class SupabaseSyncService extends EventEmitter {
                 }
 
                 this.sendToUI("sync:pull", {count: data.length});
-                console.log(`[Sync] Pulled ${data.length} team members`);
+                this.sendToUI("sync:success", {message: "Pulled " + data.length + " team members"});
             } catch (err) {
-                console.error("[Sync] Pull failed:", err);
+                this.sendToUI("sync:error", {message: "Failed to pull team members", error: err});
             }
         }
     }
@@ -600,7 +602,7 @@ export class SupabaseSyncService extends EventEmitter {
             const rows = this.dbService.query("SELECT * FROM revisions WHERE synced = 0 LIMIT 50");
             if (!rows || rows.length === 0) return;
 
-            console.log(`[Sync] Pushing ${rows.length} local revisions...`);
+            this.sendToUI("sync:info", {message: "Pushing " + rows.length + " local revisions..."});
             for (const r of rows) {
                 try {
                     const payload = JSON.parse(r.payload);
@@ -608,18 +610,18 @@ export class SupabaseSyncService extends EventEmitter {
 
                     if (!error) {
                         this.dbService.query("UPDATE revisions SET synced = 1 WHERE id = ?", [r.id]);
-                        console.log("[Sync] ✅ Synced revision:", r.id);
+                        this.sendToUI("sync:success", {message: "Synced revision: " + r.id});
                     } else {
-                        console.warn("[Sync] Push failed:", error.message ?? error);
+                        this.sendToUI("sync:warning", {message: "Failed to sync revision: " + r.id});
                         this.queueRetry(r);
                     }
                 } catch (err) {
-                    console.error("[Sync] Revision parse or push error:", err);
+                    this.sendToUI("sync:error", {message: "Failed to sync revision: " + r.id, error: err});
                     this.queueRetry(r);
                 }
             }
         } catch (err) {
-            console.error("[Sync] pushLocalRevisions top-level error:", err);
+            this.sendToUI("sync:error", {message: "Failed to push local revisions", error: err});
         }
     }
 
@@ -628,7 +630,7 @@ export class SupabaseSyncService extends EventEmitter {
         const retryCount = rev.retryCount || 0;
         const delay = Math.min(60000, Math.pow(2, retryCount) * 1000);
 
-        console.log(`[Sync] Queuing retry for ${rev.id} (in ${delay} ms)`);
+        this.sendToUI("sync:info", {message: "Queuing retry for " + rev.id + " (in " + delay + " ms)"});
 
         setTimeout(async () => {
             try {
@@ -637,12 +639,12 @@ export class SupabaseSyncService extends EventEmitter {
 
                 if (!error) {
                     this.dbService.query("UPDATE revisions SET synced = 1 WHERE id = ?", [rev.id]);
-                    console.log("[Sync] ✅ Retry succeeded:", rev.id);
+                    this.sendToUI("sync:success", {message: "Synced revision: " + rev.id});
                     return;
                 }
                 throw error;
             } catch (err) {
-                console.error("[Sync] Retry failed for", rev.id, err);
+                this.sendToUI("sync:error", {message: "Failed to sync revision: " + rev.id, error: err});
                 // schedule again
                 this.queueRetry({...rev, retryCount: retryCount + 1});
             }
@@ -661,7 +663,7 @@ export class SupabaseSyncService extends EventEmitter {
         const supabasePath = `tasks/${taskId}/${Date.now()}-${fileName}`;
 
         const {data, error} = await this.client.storage.from("attachments").upload(supabasePath, fileBuffer);
-        if (error) throw error;
+        if (error) this.sendToUI("sync:error", {message: "Failed to upload attachment", error});
 
         const created_at = Date.now();
         const newAttachment = {
@@ -687,6 +689,7 @@ export class SupabaseSyncService extends EventEmitter {
         const db = this.dbService.getOrm();
         db.insert(attachments).values(newAttachment).run();
         db.insert(revisions).values(newRevision).run();
+        this.sendToUI("sync:success", {message: "Created attachment: " + newAttachment.id});
         return newAttachment;
     }
 
@@ -716,6 +719,7 @@ export class SupabaseSyncService extends EventEmitter {
         if (canceled || !filePath) return null;
 
         fs.writeFileSync(filePath, Buffer.from(await data.arrayBuffer()));
+        this.sendToUI("sync:success", {message: "Downloaded attachment: " + filename});
         shell.showItemInFolder(filePath);
         return filePath;
     }
@@ -729,14 +733,17 @@ export class SupabaseSyncService extends EventEmitter {
     }
 
     private sendToUI(event: string, payload: any) {
-        if (!this.mainWindow) {
-            console.warn(`[Sync] Attempted to send ${event} but mainWindow is not set`);
-            return;
-        }
         try {
+            if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+                console.warn(`Cannot send ${event}: mainWindow is not available.`);
+                return;
+            }
+
+            // Ensure payload is serializable (IPC requires it)
             this.mainWindow.webContents.send(event, payload);
         } catch (err) {
-            console.error("[Sync] sendToUI error:", err);
+            // Log to console or a file — DO NOT re-send to UI
+            console.error(`Failed to send event '${event}' to UI:`, err);
         }
     }
 }

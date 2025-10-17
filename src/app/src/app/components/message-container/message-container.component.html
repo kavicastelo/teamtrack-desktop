@@ -1,0 +1,12 @@
+<div class="message-stack">
+  <div
+    class="message-card"
+    *ngFor="let msg of messages; trackBy: trackById"
+    [ngClass]="msg.type"
+    (click)="dismiss(msg.id)"
+  >
+    <mat-icon class="icon">{{ icon(msg.type) }}</mat-icon>
+    <span class="text">{{ msg.text }}</span>
+    <mat-icon class="close">close</mat-icon>
+  </div>
+</div>

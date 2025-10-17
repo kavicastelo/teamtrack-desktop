@@ -10,6 +10,7 @@ import {MatSidenav, MatSidenavContainer, MatSidenavContent} from '@angular/mater
 import {MatToolbar} from '@angular/material/toolbar';
 import {MatListItem, MatNavList} from '@angular/material/list';
 import {MatTooltip} from '@angular/material/tooltip';
+import {MessageContainerComponent} from './components/message-container/message-container.component';
 
 export interface SyncStatus {
   type: 'pull' | 'remoteUpdate';
@@ -17,7 +18,7 @@ export interface SyncStatus {
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, NgClass, NgIf, AsyncPipe, MatIcon, MatIconButton, MatMenu, MatMenuItem, RouterLink, MatMenuTrigger, MatSidenavContent, MatToolbar, MatSidenavContainer, MatNavList, MatListItem, RouterLinkActive, MatSidenav, MatTooltip],
+  imports: [RouterOutlet, NgClass, NgIf, AsyncPipe, MatIcon, MatIconButton, MatMenu, MatMenuItem, RouterLink, MatMenuTrigger, MatSidenavContent, MatToolbar, MatSidenavContainer, MatNavList, MatListItem, RouterLinkActive, MatSidenav, MatTooltip, MessageContainerComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
   standalone: true
