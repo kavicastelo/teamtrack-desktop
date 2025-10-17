@@ -28,6 +28,26 @@ export class IpcService {
     if (window.electronAPI?.onSyncStatus) {
       window.electronAPI.onSyncStatus((data: any) => this.statusEvents$.next(data));
     }
+
+    if (window.electronAPI?.onSuccessMessage) {
+      window.electronAPI.onSuccessMessage((data: any) =>
+        this.statusEvents$.next({type: "success", record: data}));
+    }
+
+    if (window.electronAPI?.onErrorMessage) {
+      window.electronAPI.onErrorMessage((data: any) =>
+        this.statusEvents$.next({type: "error", record: data}));
+    }
+
+    if (window.electronAPI?.onInfoMessage) {
+      window.electronAPI.onInfoMessage((data: any) =>
+        this.statusEvents$.next({type: "info", record: data}));
+    }
+
+    if (window.electronAPI?.onWarningMessage) {
+      window.electronAPI.onWarningMessage((data: any) =>
+        this.statusEvents$.next({type: "warning", record: data}));
+    }
   }
 
   async createTask(payload: any) {
