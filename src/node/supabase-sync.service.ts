@@ -471,18 +471,18 @@ export class SupabaseSyncService extends EventEmitter {
                     if (!local || new Date(record.created_at).getTime() > new Date(local.created_at).getTime()) {
                         this.dbService.db
                             .prepare(
-                                `INSERT INTO attachments (id, task_id, filename, mimetype, size, supabase_path,
+                                `INSERT INTO attachments (id, taskId, filename, mimetype, size, supabase_path,
                                                           created_at)
                                  VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
                                 UPDATE SET
-                                    task_id=excluded.task_id,
+                                    taskId=excluded.taskId,
                                     filename=excluded.filename,
                                     mimetype=excluded.mimetype,
                                     size=excluded.size,
                                     supabase_path=excluded.supabase_path,
                                     created_at=excluded.created_at`
                             )
-                            .run(record.id, record.task_id, record.filename, record.mimetype, record.size, record.supabase_path, record.created_at);
+                            .run(record.id, record.taskId, record.filename, record.mimetype, record.size, record.supabase_path, record.created_at);
                     }
                 }
 

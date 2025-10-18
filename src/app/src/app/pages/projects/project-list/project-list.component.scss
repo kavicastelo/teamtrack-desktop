@@ -1,3 +1,4 @@
+@use "sass:color";
 $bg-dark: #121212;
 $surface: #1e1e1e;
 $surface-hover: #2a2a2a;
@@ -44,7 +45,7 @@ $accent: #00bcd4;
   background: $accent;
   color: #000;
   &:hover {
-    background: lighten($accent, 10%);
+    background: color.adjust($accent, $lightness: 10%);
   }
 }
 

@@ -109,4 +109,8 @@ export class IpcService {
   async pullRemoteUpdates() {
     return window.electronAPI.pullRemoteUpdates();
   }
+
+  async onDeepLink(cb: (payload: any) => void) {
+    return window.electronAPI.onDeepLink(cb);
+  }
 }
