@@ -11,13 +11,24 @@ const store = new Store();
 let mainWindow: BrowserWindow | null = null;
 let dbService: DatabaseService;
 let syncService: SupabaseSyncService;
+let deepLinkUrl: string | null = null;
+const gotLock = app.requestSingleInstanceLock();
+const protocolName = 'myapp';
 
-const authService: AuthService = new AuthService({
-    supabaseUrl: process.env.SUPABASE_URL!,
-    supabaseKey: process.env.SUPABASE_ANON_KEY!,
-    db: dbService,
-    mainWindow
-});
+// -- macOS & Windows install handling
+if (process.defaultApp) {
+    // Running via `electron .` (dev mode)
+    app.setAsDefaultProtocolClient(protocolName, process.execPath, [path.resolve(process.argv[1])]);
+} else {
+    // Packaged app
+    app.setAsDefaultProtocolClient(protocolName);
+}
+
+// -- Handle deep link URLs before app ready (Windows)
+if (process.platform === 'win32') {
+    const deepArg = process.argv.find(arg => arg.startsWith(`${protocolName}://`));
+    if (deepArg) deepLinkUrl = deepArg;
+}
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -41,6 +52,14 @@ function createWindow() {
 
     mainWindow.on("closed", () => {
         mainWindow = null;
+    });
+
+    // Forward deep link once renderer ready
+    mainWindow.webContents.on('did-finish-load', () => {
+        if (deepLinkUrl) {
+            mainWindow!.webContents.send('deep-link', deepLinkUrl);
+            deepLinkUrl = null;
+        }
     });
 }
 
@@ -69,6 +88,22 @@ app.whenReady().then(async () => {
     });
     await syncService.start();
 
+    const authService: AuthService = new AuthService({
+        supabaseUrl: process.env.SUPABASE_URL!,
+        supabaseKey: process.env.SUPABASE_ANON_KEY!,
+        db: dbService,
+        mainWindow
+    });
+
+    // Register custom protocol (macOS + Windows)
+    if (process.defaultApp) {
+        if (process.argv.length >= 2) {
+            app.setAsDefaultProtocolClient('myapp', process.execPath, [path.resolve(process.argv[1])]);
+        }
+    } else {
+        app.setAsDefaultProtocolClient('myapp');
+    }
+
     /** IPC handlers */
 // Email sign-in
     ipcMain.handle('auth:signInEmail', async (_, email) => {
@@ -92,8 +127,32 @@ app.whenReady().then(async () => {
         return await authService.restoreSession();
     });
 
-// Get current user
-    ipcMain.handle('auth:getUser', () => authService.getCurrentUser());
+    ipcMain.handle('auth:inviteUser', async (_, payload) => {
+        return await authService.inviteUser(payload.email, payload.role, payload.teamId);
+    });
+
+    ipcMain.handle('auth:listUsers', async () => {
+        return await authService.listUsers();
+    });
+
+    ipcMain.handle('auth:getUser', async (_, userId?: string) => {
+        // If called with no id, return current user (existing handler maybe), else return profile.
+        if (!userId) return authService.getCurrentUser();
+        return await authService.getUserById(userId);
+    });
+
+    ipcMain.handle('auth:updateUserRole', async (_, payload) => {
+        return await authService.updateUserRole(payload.userId, payload.role, payload.teamId);
+    });
+
+    ipcMain.handle('auth:removeUser', async (_, payload) => {
+        // payload: { userId, hardDelete?: boolean }
+        return await authService.removeUser(payload.userId, payload.hardDelete);
+    });
+
+    ipcMain.handle('auth:updatePassword', async (_, password) => authService.updatePassword(password));
+
+    ipcMain.handle('db:updateProfile', async (_, profile) => authService.updateProfile(profile));
 
 // Sign out
     ipcMain.handle('auth:signOut', () => authService.signOut());
@@ -286,3 +345,33 @@ app.on("before-quit", async () => {
     if (syncService) await syncService.stop();
     if (dbService) await dbService.close();
 });
+
+app.on('open-url', (event, url) => {
+    event.preventDefault();
+    console.log('Received deep link:', url);
+
+    // Send to renderer (Angular)
+    if (mainWindow) {
+        mainWindow.webContents.send('deep-link', url);
+    }
+});
+
+// macOS deep link event
+app.on('open-url', (event, url) => {
+    event.preventDefault();
+    if (mainWindow) mainWindow.webContents.send('deep-link', url);
+    else deepLinkUrl = url;
+});
+
+// Windows: when user opens another instance with link
+if (!gotLock) app.quit();
+else {
+    app.on('second-instance', (_, argv) => {
+        const url = argv.find(a => a.startsWith(`${protocolName}://`));
+        if (url && mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.focus();
+            mainWindow.webContents.send('deep-link', url);
+        }
+    });
+}

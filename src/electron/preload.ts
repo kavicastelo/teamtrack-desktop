@@ -1,13 +1,20 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electronAPI", {
+    onDeepLink: (callback: (url: string) => void) => ipcRenderer.on('deep-link', (_, url) => callback(url)),
     auth: {
         signInEmail: (email: string) => ipcRenderer.invoke('auth:signInEmail', email),
         signInGoogle: () => ipcRenderer.invoke('auth:signInGoogle'),
         handleCallback: (url: string) => ipcRenderer.invoke('auth:handleCallback', url),
         restoreSession: () => ipcRenderer.invoke('auth:restoreSession'),
-        getUser: () => ipcRenderer.invoke('auth:getUser'),
+        inviteUser: (payload: any) => ipcRenderer.invoke('auth:inviteUser', payload),
+        listUsers: () => ipcRenderer.invoke('auth:listUsers'),
+        getUser: (userId?: string) => ipcRenderer.invoke('auth:getUser', userId),
+        updateUserRole: (payload: any) => ipcRenderer.invoke('auth:updateUserRole', payload),
+        removeUser: (payload: any) => ipcRenderer.invoke('auth:removeUser', payload),
         signOut: () => ipcRenderer.invoke('auth:signOut'),
+        updatePassword: (password: string) => ipcRenderer.invoke('auth:updatePassword', password),
+        updateProfile: (profile: any) => ipcRenderer.invoke('db:updateProfile', profile),
     },
     createTask: (payload: any) => ipcRenderer.invoke("task:create", payload),
     updateTask: (payload: any) => ipcRenderer.invoke("task:update", payload),

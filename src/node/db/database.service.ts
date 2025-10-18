@@ -98,7 +98,8 @@ export class DatabaseService {
                                          calendar_sync_enabled INTEGER DEFAULT 0,
                                          google_calendar_id TEXT,
                                          available_times TEXT,
-                                         updated_at INTEGER
+                                         updated_at INTEGER,
+                                         invited_at INTEGER
       );
 
       CREATE TABLE IF NOT EXISTS local_session (
@@ -374,5 +375,42 @@ export class DatabaseService {
   `).run(crypto.randomUUID(), 'teams', payload.id, Date.now(), JSON.stringify(payload), now);
 
     return { ...payload, updated_at: now };
+  }
+
+  public createUser(payload: any) {
+    const id = payload.id || uuidv4();
+    payload.id = id;
+    const now = Date.now();
+    payload.updated_at = now;
+    payload.invited_at = now;
+    this.db!.prepare(`
+    INSERT INTO users (id, email, full_name, role, avatar_url, timezone, calendar_sync_enabled, google_calendar_id, available_times, updated_at, invited_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, payload.email, '', payload.role, '', '', 0, '', '', now, now);
+
+    this.db!.prepare(`
+    INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+    VALUES (?, ?, ?, ?, ?, ?, 0)
+  `).run(uuidv4(), 'users', id, 1, JSON.stringify(payload), now);
+
+    return { id, ...payload, updated_at: now, invited_at: now };
+  }
+
+  public createTeamMember(payload: any) {
+    const id = payload.id || uuidv4();
+    payload.id = id;
+    const now = Date.now();
+    payload.created_at = now;
+    this.db!.prepare(`
+    INSERT INTO team_members (id, team_id, user_id, role, created_at)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(id, payload.team_id, payload.user_id, payload.role, now);
+
+    this.db!.prepare(`
+    INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+    VALUES (?, ?, ?, ?, ?, ?, 0)
+  `).run(uuidv4(), 'team_members', id, 1, JSON.stringify(payload), now);
+
+    return { id, ...payload, created_at: now };
   }
 }

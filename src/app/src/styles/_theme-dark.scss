@@ -1,0 +1,24 @@
+@use '../index' as mat;
+@use '@angular/material' as ngmat;
+
+/* Configure a dark theme */
+$primary: mat.custom-define-palette(mat.$indigo-palette-custom);
+$accent: mat.custom-define-palette(mat.$pink-palette-custom);
+$warn: mat.custom-define-palette(mat.$red-palette-custom);
+
+$dark-theme: mat.custom-define-dark-theme((
+  color: (
+    primary: $primary,
+    accent: $accent,
+    warn: $warn
+  )
+));
+
+//@include ngmat.all-component-themes($dark-theme);
+
+/* App-level background + typography */
+body {
+  background: mat.custom-get-color-from-palette($primary, 900); // dark shade
+  color: mat.custom-get-contrast-color-from-palette($primary, 900);
+  font-family: 'Inter', Roboto, 'Helvetica Neue', Arial, serif;
+}
