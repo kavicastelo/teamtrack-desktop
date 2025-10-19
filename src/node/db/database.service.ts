@@ -413,4 +413,28 @@ export class DatabaseService {
 
     return { id, ...payload, created_at: now };
   }
+
+  public updateUserRole(payload: any) {
+    const now = Date.now();
+    this.db!.prepare(`
+      UPDATE users SET role=? WHERE id=?
+    `).run(payload.role, payload.userId);
+    return { ...payload, updated_at: now };
+  }
+
+  public updateTeamMemberRole(payload: any) {
+    const now = Date.now();
+    this.db!.prepare(`
+      UPDATE team_members SET role=? WHERE team_id=? AND user_id=?
+    `).run(payload.role, payload.team_id, payload.user_id);
+    return { ...payload, updated_at: now };
+  }
+
+  public updateUserProfile(payload: any) {
+    const now = Date.now();
+    this.db!.prepare(`
+      UPDATE users SET * WHERE id=?
+    `).run(payload, payload.id);
+    return { ...payload, updated_at: now };
+  }
 }
