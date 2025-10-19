@@ -186,10 +186,14 @@ export class AuthService extends EventEmitter {
         const client = this.adminClient ?? this.supabase;
         const { data, error } = await client.from('users').update({ role }).eq('id', userId);
         if (error) throw error;
+        const payload = {role: role, userId: userId}
+        await this.dbService.updateUserRole(payload);
 
         if (teamId) {
             // update team member role as well
             await client.from('team_members').update({ role }).match({ team_id: teamId, user_id: userId });
+            const payload = {role: role, user_id: userId, team_id: teamId}
+            await this.dbService.updateTeamMemberRole(payload);
         }
         return data;
     }
@@ -223,6 +227,7 @@ export class AuthService extends EventEmitter {
     async updateProfile(profile: any) {
         const { error } = await this.supabase.from('users').update(profile).eq('id', profile.id);
         if (error) throw error;
+        this.dbService.updateUserProfile(profile);
         return { ok: true };
     }
 

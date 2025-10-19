@@ -3,6 +3,7 @@ import {IpcService} from '../../../services/ipc.service';
 import {NgForOf} from '@angular/common';
 import {MatDialog} from '@angular/material/dialog';
 import {TeamNameDialogComponent} from '../../../components/team-name-dialog/team-name-dialog.component';
+import {Router} from '@angular/router';
 
 @Component({
   selector: 'app-team-list',
@@ -18,7 +19,7 @@ export class TeamListComponent implements OnInit {
   teams: any[] = [];
   selectedProject: any = null;
 
-  constructor(private ipc: IpcService, private dialog: MatDialog) {}
+  constructor(private ipc: IpcService, private dialog: MatDialog, private router: Router) {}
 
   async ngOnInit() {
     this.teams = await this.ipc.listTeams(this.projectId);
@@ -37,10 +38,8 @@ export class TeamListComponent implements OnInit {
     }
   }
   async editTeam(t: any) {
-    const name = prompt("Edit team name:", t.name);
-    if (name) {
-      await this.ipc.updateTeam({ ...t, name });
-      this.teams = await this.ipc.listTeams(this.selectedProject);
+    if (t) {
+      this.router.navigate([`/projects/${this.projectId}/teams/${t.id}/edit`]).then();
     }
   }
 }

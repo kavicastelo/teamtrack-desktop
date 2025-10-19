@@ -1,0 +1,74 @@
+.team-edit-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  padding: 2rem;
+  background-color: #121212;
+  color: #e0e0e0;
+  min-height: 100vh;
+}
+
+mat-card {
+  width: 100%;
+  max-width: 900px;
+  background: #1e1e1e;
+  color: #fafafa;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.team-edit-card {
+  h2 {
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+  }
+
+  mat-form-field {
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+}
+
+.members-card {
+  h3 {
+    margin-bottom: 1rem;
+    font-weight: 500;
+  }
+
+  .add-member-form {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+
+    mat-form-field {
+      flex: 1;
+    }
+  }
+
+  .members-table {
+    width: 100%;
+    background: #222;
+    border-radius: 8px;
+    overflow: hidden;
+    th {
+      font-weight: 600;
+    }
+  }
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80vh;
+}

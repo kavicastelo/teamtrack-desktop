@@ -6,6 +6,7 @@ import {MatButtonModule} from '@angular/material/button';
 import {MatDialogModule, MatDialogRef} from '@angular/material/dialog';
 import {FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {CommonModule} from '@angular/common';
+import {IpcService} from '../../services/ipc.service';
 
 @Component({
   selector: 'app-invite-user-dialog',
@@ -39,7 +40,10 @@ import {CommonModule} from '@angular/common';
 
     <mat-form-field appearance="fill" class="full">
       <mat-label>Team (optional)</mat-label>
-      <input matInput placeholder="Team ID" formControlName="teamId" />
+      <mat-select formControlName="teamId">
+        <mat-option value="">None</mat-option>
+        <mat-option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</mat-option>
+      </mat-select>
     </mat-form-field>
 
     <div class="actions">
@@ -51,19 +55,25 @@ import {CommonModule} from '@angular/common';
   </form>
   `,
   styles: [`
-    .invite-form { display:flex; flex-direction:column; gap:12px; min-width:320px; padding: 8px 0; }
+    .invite-form { display:flex; flex-direction:column; gap:12px; min-width:320px; padding: 8px; }
     .full { width:100%; }
     .actions { display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
   `]
 })
 export class InviteUserDialogComponent {
   dialogRef = inject(MatDialogRef<InviteUserDialogComponent>);
+  private ipc = inject(IpcService);
   form = new FormGroup({
     email: new FormControl('', [Validators.required, Validators.email]),
     role: new FormControl('member', [Validators.required]),
     teamId: new FormControl('')
   });
   submitting = false;
+  teams: any[] = [];
+
+  async ngOnInit() {
+    this.teams = await this.ipc.listTeams();
+  }
 
   close() {
     this.dialogRef.close(null);
