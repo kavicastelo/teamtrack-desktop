@@ -6,11 +6,20 @@ import {DatabaseService} from "../node/db/database.service.js";
 import {SupabaseSyncService} from "../node/supabase-sync.service.js";
 import crypto from "crypto";
 import {AuthService} from "./auth.service";
+import {HeartbeatService} from "../node/heartbeat.service";
+import {LocalCollectorServer} from "../node/local-collector-server";
+import {IdleMonitorService} from "../node/idle-monitor.service";
+import {ActiveWindowDetectorService} from "../node/active-window-detector";
 
 const store = new Store();
 let mainWindow: BrowserWindow | null = null;
 let dbService: DatabaseService;
 let syncService: SupabaseSyncService;
+let heartbeatService: HeartbeatService;
+let authService: AuthService;
+const activeWindowDetector = new ActiveWindowDetectorService(2000);
+const idleMonitor = new IdleMonitorService(120, 5000);
+const localCollector = new LocalCollectorServer(47845);
 let deepLinkUrl: string | null = null;
 const gotLock = app.requestSingleInstanceLock();
 const protocolName = 'myapp';
@@ -29,6 +38,59 @@ if (process.platform === 'win32') {
     const deepArg = process.argv.find(arg => arg.startsWith(`${protocolName}://`));
     if (deepArg) deepLinkUrl = deepArg;
 }
+
+// start server and detectors after auth/session restored (so we know user)
+localCollector.on('listening', ({ port }) => {
+    console.log('[Collector] LocalCollectorServer listening on', port);
+});
+
+localCollector.on('extension-heartbeat', async (hb) => {
+    // Validate/minimal shaping
+    const shaped = {
+        timestamp: hb.timestamp || Date.now(),
+        source: 'extension',
+        platform: hb.platform || hb.app || 'extension',
+        app: hb.app,
+        title: hb.title,
+        metadata: hb.metadata || {},
+        duration_ms: hb.duration_ms || undefined
+    };
+    await heartbeatService.recordHeartbeat(shaped);
+});
+
+activeWindowDetector.on('active-window', async (win) => {
+    // If user idle, ignore
+    if (idleMonitor.getIdleState()) return;
+    // Compose heartbeat
+    const hb = {
+        timestamp: win.timestamp,
+        source: 'detector',
+        platform: win.platform,
+        app: win.owner?.name,
+        title: win.title,
+    };
+    await heartbeatService.recordHeartbeat(hb);
+});
+
+idleMonitor.on('idle-start', async (info) => {
+    console.log('[Idle] user idle start', info);
+    // Optionally record an idle_event heartbeat
+    await heartbeatService.recordHeartbeat({
+        timestamp: Date.now(),
+        source: 'system',
+        platform: 'idle',
+        metadata: { idleSeconds: info.idleSeconds }
+    });
+});
+
+idleMonitor.on('idle-end', async () => {
+    console.log('[Idle] resumed');
+    await heartbeatService.recordHeartbeat({
+        timestamp: Date.now(),
+        source: 'system',
+        platform: 'active',
+    });
+});
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -78,7 +140,6 @@ app.whenReady().then(async () => {
         dbPath: path.join(app.getPath("userData"), "teamtrack.db.enc"),
         encryptionKey: key,
     });
-    await dbService.open();
 
     syncService = new SupabaseSyncService({
         supabaseUrl: process.env.SUPABASE_URL!,
@@ -86,14 +147,18 @@ app.whenReady().then(async () => {
         db: dbService,
         mainWindow
     });
-    await syncService.start();
 
-    const authService: AuthService = new AuthService({
+    authService = new AuthService({
         supabaseUrl: process.env.SUPABASE_URL!,
         supabaseKey: process.env.SUPABASE_ANON_KEY!,
         db: dbService,
         mainWindow
     });
+
+    heartbeatService = new HeartbeatService(authService, dbService);
+
+    await dbService.open();
+    await syncService.start();
 
     // Register custom protocol (macOS + Windows)
     if (process.defaultApp) {
@@ -103,6 +168,11 @@ app.whenReady().then(async () => {
     } else {
         app.setAsDefaultProtocolClient('myapp');
     }
+
+    /** Heartbeat */
+    localCollector.start();
+    activeWindowDetector.start();
+    idleMonitor.start();
 
     /** IPC handlers */
 // Email sign-in
