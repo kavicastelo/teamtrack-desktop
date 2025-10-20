@@ -148,6 +148,18 @@ export class DatabaseService {
         supabase_path TEXT,
         created_at INTEGER
       );
+
+      CREATE TABLE IF NOT EXISTS heartbeats (
+                                              id TEXT PRIMARY KEY,
+                                              user_id TEXT,
+                                              timestamp INTEGER NOT NULL,
+                                              duration_ms INTEGER,
+                                              source TEXT,
+                                              platform TEXT,
+                                              app TEXT,
+                                              title TEXT,
+                                              metadata TEXT
+      );
     `);
   }
 
@@ -377,6 +389,7 @@ export class DatabaseService {
     return { ...payload, updated_at: now };
   }
 
+// USERS
   public createUser(payload: any) {
     const id = payload.id || uuidv4();
     payload.id = id;
@@ -436,5 +449,37 @@ export class DatabaseService {
       UPDATE users SET * WHERE id=?
     `).run(payload, payload.id);
     return { ...payload, updated_at: now };
+  }
+
+// HEARTBEATS
+  createHeartbeat(payload: any) {
+    const id = payload.id || uuidv4();
+    const now = Date.now();
+    payload.id = id;
+    payload.created_at = now;
+    payload.synced = 0;
+
+    this.db!.prepare(`
+    INSERT INTO heartbeats (
+      id, user_id, timestamp, duration_ms, source, platform, app, title, metadata
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+        id,
+        payload.user_id,
+        payload.timestamp,
+        payload.duration_ms,
+        payload.source,
+        payload.platform,
+        payload.app,
+        payload.title,
+        payload.metadata
+    );
+
+    this.db!.prepare(`
+    INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+    VALUES (?, ?, ?, ?, ?, ?, 0)
+  `).run(uuidv4(), 'heartbeats', id, 1, JSON.stringify(payload), now);
+
+    return payload;
   }
 }
