@@ -111,6 +111,7 @@ export class IpcService {
   }
 
   async onDeepLink(cb: (payload: any) => void) {
+    if (!window.electronAPI?.onDeepLink) return;
     return window.electronAPI.onDeepLink(cb);
   }
 }

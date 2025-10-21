@@ -20,3 +20,8 @@ export const revisions = sqliteTable('revisions', {
     createdAt: integer('created_at'),
     synced: integer('synced').notNull().default(0),
 });
+
+export const localSession = sqliteTable('local_session', {
+    id: text('id').primaryKey(),
+    session_encrypted: text('session_encrypted'),
+});
