@@ -1,7 +1,7 @@
 <mat-sidenav-container class="app-container" autosize>
 
   <!-- Sidebar Navigation -->
-  <mat-sidenav mode="side" opened class="app-sidenav">
+  <mat-sidenav mode="side" opened class="app-sidenav" *ngIf="userProfile">
     <div class="logo">
       <mat-icon>groups</mat-icon>
       <span class="app-title">TeamTrack</span>

@@ -3,6 +3,8 @@ import { AES, enc } from 'crypto-js';
 import { BrowserWindow } from 'electron';
 import { EventEmitter } from 'events';
 import type { Session } from '@supabase/supabase-js';
+import {localSession} from "../drizzle/shema";
+import {eq} from "drizzle-orm";
 
 export class AuthService extends EventEmitter {
     private readonly supabase: SupabaseClient; // client with anon key for auth flows (current)
@@ -50,7 +52,9 @@ export class AuthService extends EventEmitter {
     async signInWithGoogle() {
         const { data, error } = await this.supabase.auth.signInWithOAuth({
             provider: 'google',
-            options: { redirectTo: process.env.ELECTRON_START_URL + '/auth/callback' },
+            options: {
+                redirectTo: 'myapp://auth/callback'
+            },
         });
         if (error) throw error;
         return data.url;
@@ -67,7 +71,7 @@ export class AuthService extends EventEmitter {
                 const { data, error } = await this.supabase.auth.exchangeCodeForSession(params['code']);
                 if (error) throw error;
                 this.session = data.session;
-                this.saveSessionLocally(data.session);
+                await this.saveSessionLocally(data.session);
                 return data.session;
             }
 
@@ -79,7 +83,7 @@ export class AuthService extends EventEmitter {
                 });
                 if (error) throw error;
                 this.session = data.session;
-                this.saveSessionLocally(data.session);
+                await this.saveSessionLocally(data.session);
                 return data.session;
             }
 
@@ -90,29 +94,42 @@ export class AuthService extends EventEmitter {
         }
     }
 
-    private saveSessionLocally(session: Session) {
+    private async saveSessionLocally(session: Session) {
         const encrypted = AES.encrypt(JSON.stringify(session), this.encryptionKey).toString();
         const db = this.dbService.getOrm();
-        db.prepare(`INSERT OR REPLACE INTO local_session (id, session_encrypted) VALUES (?, ?)`).run(
-            'session',
-            encrypted
-        );
+
+        // Delete existing session first
+        await db.delete(localSession).where(eq(localSession.id, 'session'));
+
+        // Insert new session
+        await db.insert(localSession).values({
+            id: 'session',
+            session_encrypted: encrypted,
+        });
     }
 
     async signOut() {
         await this.supabase.auth.signOut();
         const db = this.dbService.getOrm();
-        db.prepare(`DELETE FROM local_session WHERE id = ?`).run('session');
+
+        await db.delete(localSession).where(eq(localSession.id, 'session'));
         this.session = null;
     }
 
     async restoreSession() {
         const db = this.dbService.getOrm();
-        const row = db
-            .prepare(`SELECT session_encrypted FROM local_session WHERE id = ?`)
-            .get('session');
-        if (!row) return null;
+
+        const rows = await db
+            .select()
+            .from(localSession)
+            .where(eq(localSession.id, 'session'))
+            .limit(1);
+
+        if (!rows || rows.length === 0) return null;
+
+        const row = rows[0];
         const decrypted = AES.decrypt(row.session_encrypted, this.encryptionKey).toString(enc.Utf8);
+
         this.session = JSON.parse(decrypted);
         return this.session;
     }
@@ -129,35 +146,35 @@ export class AuthService extends EventEmitter {
     async inviteUser(email: string, role: string, teamId?: string) {
         if (!this.adminClient) throw new Error('Admin client not configured (SUPABASE_SERVICE_ROLE missing)');
 
-        // invite via admin
-        const { data, error } = await this.adminClient.auth.admin.inviteUserByEmail(email, {
-            redirectTo: process.env.APP_PROTOCOL_ENABLED
+        // Determine redirect target
+        const redirectTo =
+            process.env.NODE_ENV === 'development'
                 ? 'myapp://auth/invite-complete'
-                : 'https://courses.talentboozt.com/auth/invite-complete', //for testing
-        });
+                : process.env.APP_PROTOCOL_ENABLED
+                    ? 'myapp://auth/invite-complete'
+                    : 'https://courses.talentboozt.com/auth/invite-complete';
 
+        const { data, error } = await this.adminClient.auth.admin.inviteUserByEmail(email, { redirectTo });
         if (error) throw error;
 
-        // create profile in your app table (users)
         const userId = data.user?.id;
         if (userId) {
-            const userPayload = {
-                id: data.user.id,
+            const now = Date.now();
+            this.dbService.createUser({
+                id: userId,
                 email: data.user.email,
                 role,
-                invited_at: Date.now(),
-            }
-
-            this.dbService.createUser(userPayload);
+                invited_at: now,
+                updated_at: now
+            });
 
             if (teamId) {
-                const teamMemberPayload = {
+                this.dbService.createTeamMember({
                     team_id: teamId,
                     user_id: userId,
                     role,
-                    created_at: Date.now(),
-                }
-                this.dbService.createTeamMember(teamMemberPayload);
+                    created_at: now
+                });
             }
         }
 

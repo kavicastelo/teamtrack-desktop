@@ -11,6 +11,7 @@ import {MatToolbar} from '@angular/material/toolbar';
 import {MatListItem, MatNavList} from '@angular/material/list';
 import {MatTooltip} from '@angular/material/tooltip';
 import {MessageContainerComponent} from './components/message-container/message-container.component';
+import {AuthService} from './services/auth.service';
 
 export interface SyncStatus {
   type: 'pull' | 'remoteUpdate';
@@ -33,7 +34,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
   constructor(
     private ipc: IpcService,
-    private router: Router
+    private router: Router,
+    private auth: AuthService
   ) {}
 
   // ────────────────────────────────
@@ -44,6 +46,10 @@ export class AppComponent implements OnInit, OnDestroy {
     this.trackCurrentRoute();
     this.loadUserProfile().then();
     this.listenForPresence();
+    this.auth.getUser().then((user) => {
+      if (!user) this.router.navigate(['/auth/register']).then();
+      this.userProfile = user
+    });
   }
 
   ngOnDestroy() {

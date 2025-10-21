@@ -27,6 +27,7 @@ export class InviteCompleteComponent implements OnInit {
 
   async ngOnInit() {
     await this.ipc.onDeepLink(async (url: string) => {
+      console.log('Received deep link:', url);
       try {
         console.log('[InviteComplete] received deep link:', url);
         await this.auth.handleCallback(url);

@@ -416,19 +416,10 @@ app.on("before-quit", async () => {
     if (dbService) await dbService.close();
 });
 
-app.on('open-url', (event, url) => {
-    event.preventDefault();
-    console.log('Received deep link:', url);
-
-    // Send to renderer (Angular)
-    if (mainWindow) {
-        mainWindow.webContents.send('deep-link', url);
-    }
-});
-
 // macOS deep link event
 app.on('open-url', (event, url) => {
     event.preventDefault();
+    console.log('Received deep link:', url);
     if (mainWindow) mainWindow.webContents.send('deep-link', url);
     else deepLinkUrl = url;
 });

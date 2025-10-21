@@ -63,4 +63,8 @@ export class AuthService {
   async handleCallback(url: string) {
     return window.electronAPI?.auth.handleCallback(url);
   }
+
+  async restoreSession() {
+    return window.electronAPI?.auth.restoreSession();
+  }
 }
