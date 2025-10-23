@@ -3,7 +3,7 @@ import { AES, enc } from 'crypto-js';
 import { BrowserWindow } from 'electron';
 import { EventEmitter } from 'events';
 import type { Session } from '@supabase/supabase-js';
-import {localSession} from "../drizzle/shema";
+import {localSession} from "../../drizzle/shema";
 import {eq} from "drizzle-orm";
 
 export class AuthService extends EventEmitter {
@@ -67,27 +67,31 @@ export class AuthService extends EventEmitter {
         const hashParams = Object.fromEntries(new URLSearchParams(u.hash.replace(/^#/, '')));
 
         try {
+            let session;
+
             if (params['code']) {
                 const { data, error } = await this.supabase.auth.exchangeCodeForSession(params['code']);
                 if (error) throw error;
-                this.session = data.session;
-                await this.saveSessionLocally(data.session);
-                return data.session;
-            }
-
-            if (hashParams['access_token']) {
+                session = data.session;
+            } else if (hashParams['access_token']) {
                 const { access_token, refresh_token } = hashParams;
                 const { data, error } = await this.supabase.auth.setSession({
                     access_token,
                     refresh_token,
                 });
                 if (error) throw error;
-                this.session = data.session;
-                await this.saveSessionLocally(data.session);
-                return data.session;
+                session = data.session;
+            } else {
+                throw new Error('Invalid callback URL: no code or access_token found');
             }
 
-            throw new Error('Invalid callback URL: no code or access_token found');
+            this.session = session;
+            await this.saveSessionLocally(session);
+
+            return {
+                session,
+                user: session.user,
+            };
         } catch (err) {
             console.error('[handleCallback] Error:', err);
             throw err;
@@ -106,6 +110,11 @@ export class AuthService extends EventEmitter {
             id: 'session',
             session_encrypted: encrypted,
         });
+    }
+
+    private async clearLocalSession() {
+        const db = this.dbService.getOrm();
+        await db.delete(localSession).where(eq(localSession.id, 'session'));
     }
 
     async signOut() {
@@ -129,9 +138,24 @@ export class AuthService extends EventEmitter {
 
         const row = rows[0];
         const decrypted = AES.decrypt(row.session_encrypted, this.encryptionKey).toString(enc.Utf8);
+        const session = JSON.parse(decrypted);
 
-        this.session = JSON.parse(decrypted);
-        return this.session;
+        const { data, error } = await this.supabase.auth.setSession(session);
+        if (error) {
+            console.warn("Session expired -> clearing");
+            await this.clearLocalSession();
+            return null;
+        }
+
+        // Keep fresh tokens
+        await this.saveSessionLocally(data.session);
+
+        this.session = data.session;
+
+        return {
+            session: data.session,
+            user: data.session.user,
+        };
     }
 
     // -------------------------
@@ -248,5 +272,15 @@ export class AuthService extends EventEmitter {
         return { ok: true };
     }
 
-    getCurrentUser() { return this.session?.user || null; }
+    getCurrentUser() {
+        if (this.session) {
+            const session = this.session;
+            return {
+                session,
+                user: session.user,
+            };
+        } else {
+            return null;
+        }
+    }
 }
