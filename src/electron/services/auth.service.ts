@@ -283,4 +283,17 @@ export class AuthService extends EventEmitter {
             return null;
         }
     }
+
+    async saveCalendarTokens(tokens) {
+        const encrypted = AES.encrypt(JSON.stringify(tokens), this.encryptionKey).toString();
+
+        const orm = this.dbService.getOrm();
+        await orm.insert(localSession).values({
+            id: 'google_calendar',
+            session_encrypted: encrypted
+        }).onConflictDoUpdate({
+            target: localSession.id,
+            set: { session_encrypted: encrypted }
+        });
+    }
 }

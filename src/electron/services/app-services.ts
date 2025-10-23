@@ -10,6 +10,7 @@ import { HeartbeatService } from "../../node/heartbeat.service";
 import { LocalCollectorServer } from "../../node/local-collector-server";
 import { IdleMonitorService } from "../../node/idle-monitor.service";
 import { ActiveWindowDetectorService } from "../../node/active-window-detector";
+import {GoogleCalendarSyncService} from "../../node/google-calendar-sync.service";
 
 let dbService: DatabaseService;
 let syncService: SupabaseSyncService;
@@ -18,6 +19,7 @@ let heartbeatService: HeartbeatService;
 let idleMonitor: IdleMonitorService;
 let activeWindowDetector: ActiveWindowDetectorService;
 let localCollector: LocalCollectorServer;
+let calendarSync: GoogleCalendarSyncService;
 
 export async function initializeAppServices(mainWindow: BrowserWindow) {
     const store = new Store();
@@ -50,6 +52,9 @@ export async function initializeAppServices(mainWindow: BrowserWindow) {
         mainWindow,
     });
 
+    calendarSync = new GoogleCalendarSyncService(dbService);
+    calendarSync.start();
+
     heartbeatService = new HeartbeatService(authService, dbService);
     idleMonitor = new IdleMonitorService(120, 5000);
     activeWindowDetector = new ActiveWindowDetectorService(2000);
@@ -75,6 +80,7 @@ export async function shutdownServices() {
     try {
         await syncService?.stop();
         await dbService?.close();
+        await calendarSync?.stop();
     } catch (err) {
         console.error("[Main] Shutdown error:", err);
     }

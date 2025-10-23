@@ -1,0 +1,57 @@
+<div class="profile-root dark-theme">
+  <mat-card class="card">
+    <h2 class="title">Your Profile</h2>
+
+    <div class="avatar-container">
+      <img [src]="avatarUrl" class="avatar" alt="avatar">
+    </div>
+
+    <form [formGroup]="profileForm">
+
+      <mat-form-field appearance="fill" class="full">
+        <mat-label>Email</mat-label>
+        <input matInput formControlName="email">
+      </mat-form-field>
+
+      <mat-form-field appearance="fill" class="full">
+        <mat-label>Full name</mat-label>
+        <input matInput formControlName="full_name" required>
+      </mat-form-field>
+
+      <mat-form-field appearance="fill" class="full">
+        <mat-label>Timezone</mat-label>
+        <input matInput formControlName="timezone">
+      </mat-form-field>
+
+      <mat-slide-toggle formControlName="calendar_sync_enabled">
+        Enable Google Calendar Sync
+      </mat-slide-toggle>
+
+      <div class="calendar-actions">
+        <button mat-stroked-button color="primary" (click)="connectCalendar()" *ngIf="!calendarConnected">
+          Connect Google Calendar
+        </button>
+        <button mat-stroked-button color="warn" (click)="disconnectCalendar()" *ngIf="calendarConnected">
+          Disconnect
+        </button>
+      </div>
+
+      <div *ngIf="calendarConnected" class="calendar-status">
+        Connected to: <strong>{{ calendarId || 'unknown' }}</strong>
+      </div>
+
+      <mat-form-field appearance="fill" class="full">
+        <mat-label>Availability (json or hour range)</mat-label>
+        <textarea matInput rows="2" formControlName="available_times"></textarea>
+      </mat-form-field>
+
+      <button mat-flat-button
+              color="primary"
+              class="full"
+              (click)="save()"
+              [disabled]="saving">
+        {{ saving ? 'Saving...' : 'Save changes' }}
+      </button>
+    </form>
+  </mat-card>
+</div>

@@ -99,7 +99,9 @@ export class DatabaseService {
                                          google_calendar_id TEXT,
                                          available_times TEXT,
                                          updated_at INTEGER,
-                                         invited_at INTEGER
+                                         invited_at INTEGER,
+                                         google_refresh_token TEXT,
+                                         last_calendar_sync INTEGER
       );
 
       CREATE TABLE IF NOT EXISTS local_session (
