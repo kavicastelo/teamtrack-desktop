@@ -16,6 +16,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
         updatePassword: (password: string) => ipcRenderer.invoke('auth:updatePassword', password),
         updateProfile: (profile: any) => ipcRenderer.invoke('db:updateProfile', profile),
     },
+    calendarAPI: {
+        connect: () => ipcRenderer.invoke('google-calendar:connect'),
+        disconnect: () => ipcRenderer.invoke('google-calendar:disconnect'),
+        getStatus: () => ipcRenderer.invoke('google-calendar:get-status'),
+    },
     createTask: (payload: any) => ipcRenderer.invoke("task:create", payload),
     updateTask: (payload: any) => ipcRenderer.invoke("task:update", payload),
     deleteTask: (id: string) => ipcRenderer.invoke("task:delete", id),

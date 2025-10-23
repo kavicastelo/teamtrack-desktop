@@ -128,12 +128,12 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   async logout() {
-    // try {
-    //   await this.ipc.signOut();
-    //   await this.router.navigate(['/login']);
-    // } catch (err) {
-    //   console.error('Logout failed', err);
-    // }
+    try {
+      await this.auth.signOut();
+      await this.router.navigate(['/auth/login']);
+    } catch (err) {
+      console.error('Logout failed', err);
+    }
   }
 
   // ────────────────────────────────

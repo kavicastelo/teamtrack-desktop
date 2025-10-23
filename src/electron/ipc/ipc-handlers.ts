@@ -3,6 +3,7 @@ import type { DatabaseService } from "../../node/db/database.service.js";
 import type { SupabaseSyncService } from "../../node/supabase-sync.service.js";
 import type { AuthService } from "../services/auth.service";
 import type { HeartbeatService } from "../../node/heartbeat.service";
+import {registerGoogleCalendarIPC} from "./google-calendar-ipc";
 
 export function registerIPCHandlers(services: {
     dbService: DatabaseService;
@@ -163,4 +164,7 @@ export function registerIPCHandlers(services: {
 
     /** Sync **/
     ipcMain.handle("db:originPull", async (_) => syncService.pullAllRemoteUpdates());
+
+    /** Google Calendar **/
+    registerGoogleCalendarIPC(authService, dbService);
 }

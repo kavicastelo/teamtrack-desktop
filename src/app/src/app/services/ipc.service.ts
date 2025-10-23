@@ -4,6 +4,11 @@ import {Subject} from 'rxjs';
 declare global {
   interface Window {
     electronAPI: any;
+    calendarAPI: {
+      connect(): Promise<any>;
+      disconnect(): Promise<any>;
+      getStatus(): Promise<{ connected: boolean; calendar_id?: string; sync_enabled?: boolean }>;
+    };
   }
 }
 
@@ -113,5 +118,21 @@ export class IpcService {
   async onDeepLink(cb: (payload: any) => void) {
     if (!window.electronAPI?.onDeepLink) return;
     return window.electronAPI.onDeepLink(cb);
+  }
+
+  async openGoogleOAuth() {
+    return window.electronAPI.openGoogleOAuth();
+  }
+
+  connectCalendar() {
+    return window.electronAPI.calendarAPI.connect();
+  }
+
+  disconnectCalendar() {
+    return window.electronAPI.calendarAPI.disconnect();
+  }
+
+  getCalendarStatus() {
+    return window.electronAPI.calendarAPI.getStatus();
   }
 }
