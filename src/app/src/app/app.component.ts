@@ -36,20 +36,25 @@ export class AppComponent implements OnInit, OnDestroy {
     private ipc: IpcService,
     private router: Router,
     private auth: AuthService
-  ) {}
+  ) {
+    this.router.routeReuseStrategy.shouldReuseRoute = () => false;
+  }
 
   // ────────────────────────────────
   // LIFECYCLE
   // ────────────────────────────────
-  ngOnInit() {
+  async ngOnInit() {
     this.initSyncStatus();
     this.trackCurrentRoute();
     this.loadUserProfile().then();
     this.listenForPresence();
-    this.auth.getUser().then((user) => {
-      if (!user) this.router.navigate(['/auth/register']).then();
-      this.userProfile = user
+
+    // 👇 Listen for deep-link events from Electron
+    await this.ipc.onDeepLink((url: string) => {
+      this.handleDeepLink(url);
     });
+
+    this.initAuth().then();
   }
 
   ngOnDestroy() {
@@ -148,6 +153,22 @@ export class AppComponent implements OnInit, OnDestroy {
   // ────────────────────────────────
   toggleDrawer() {
     this.drawer.toggle().then();
+  }
+
+  private async initAuth() {
+    const user = await this.auth.restoreSession();
+    this.userProfile = user;
+    if (!user && !window.location.href.includes('auth/callback')) {
+      await this.router.navigate(['/auth/login']);
+    }
+  }
+
+  // 👇 Process the incoming deep link
+  private async handleDeepLink(url: string) {
+    if (url.startsWith('myapp://auth/callback')) {
+      // Redirect Angular router to the callback route
+      await this.router.navigate(['/auth/callback'], { queryParams: { url } });
+    }
   }
 
   // ────────────────────────────────
