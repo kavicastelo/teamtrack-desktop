@@ -40,6 +40,13 @@
         Connected to: <strong>{{ calendarId || 'unknown' }}</strong>
       </div>
 
+      <div *ngIf="calendarConnected">
+        <h3>Calendar busy slots</h3>
+        <div *ngFor="let slot of busySlots">
+          <div>{{ slot.start | date:'short' }} → {{ slot.end | date:'short' }}</div>
+        </div>
+      </div>
+
       <mat-form-field appearance="fill" class="full">
         <mat-label>Availability (json or hour range)</mat-label>
         <textarea matInput rows="2" formControlName="available_times"></textarea>

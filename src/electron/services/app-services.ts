@@ -58,7 +58,7 @@ export async function initializeAppServices(mainWindow: BrowserWindow) {
     heartbeatService = new HeartbeatService(authService, dbService);
     idleMonitor = new IdleMonitorService(120, 5000);
     activeWindowDetector = new ActiveWindowDetectorService(2000);
-    localCollector = new LocalCollectorServer(47845);
+    localCollector = new LocalCollectorServer(47845, authService);
 
     await syncService.start();
 

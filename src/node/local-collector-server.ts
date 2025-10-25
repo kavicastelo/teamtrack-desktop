@@ -62,6 +62,20 @@ export class LocalCollectorServer extends EventEmitter {
             const code = req.query.code as string;
             if (!code) return res.status(400).send("Missing OAuth code");
 
+            let parsedState: { userId: string | null; ts: number } | null = null;
+            try {
+                parsedState = JSON.parse(req.query.state as string);
+            } catch {
+                return res.status(400).send("Invalid state parameter");
+            }
+
+            if (!parsedState?.userId) {
+                return res.status(400).send("Missing user context");
+            }
+
+            const userId = parsedState.userId;
+            console.log(userId)
+
             try {
                 const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
                     method: "POST",
@@ -88,7 +102,7 @@ export class LocalCollectorServer extends EventEmitter {
 
                 // Save tokens securely through AuthService
                 if (this.authService && typeof this.authService.saveCalendarTokens === "function") {
-                    await this.authService.saveCalendarTokens(tokenData);
+                    await this.authService.saveCalendarTokens(tokenData, userId);
                     console.log("[LocalCollector] Google tokens saved to DB");
                 }
 

@@ -41,3 +41,12 @@ export const users = sqliteTable('users', {
     google_refresh_token: text('google_refresh_token').notNull().default(''),
     last_calendar_sync: integer('last_calendar_sync').notNull().default(0),
 })
+
+export const calendar_events = sqliteTable('calendar_events', {
+    id: text('id').primaryKey(),
+    calendar_id: text('calendar_id').notNull(),
+    start: integer('start').notNull(),
+    end: integer('end').notNull(),
+    summary: text('summary').notNull(),
+    updated_at: integer('updated_at').notNull(),
+})

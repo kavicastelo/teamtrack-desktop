@@ -42,6 +42,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   calendarConnected = false;
   calendarId: string | null = null;
+  calendarEvents: any[] = [];
+  busySlots: { start: number; end: number }[] = [];
+  freeSlots: { start: number; end: number }[] = [];
 
   constructor(
     private fb: FormBuilder,
@@ -69,6 +72,12 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
     // Optionally load saved availability from supabase
     await this.loadRemoteProfile();
+
+    await this.loadCalendarStatus();
+
+    if (this.calendarConnected) {
+      await this.loadCalendarEvents();
+    }
   }
 
   ngOnDestroy() {
@@ -98,8 +107,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
     const payload = {
       id: this.user.id,
       email: this.user.email,
+      calendar_sync_enabled: this.profileForm.value.calendar_sync_enabled ? 1 : 0,
       ...this.profileForm.getRawValue(),
-      updated_at: Date.now()
     };
 
     try {
@@ -113,7 +122,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   async loadCalendarStatus() {
-    const status = await this.ipc.getCalendarStatus();
+    const status = await this.ipc.getCalendarStatus(this.user.id || null);
     this.calendarConnected = status.connected;
     this.calendarId = status.calendar_id || null;
     this.profileForm.patchValue({
@@ -122,14 +131,33 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   async connectCalendar() {
-    await this.ipc.connectCalendar();
+    await this.ipc.connectCalendar(this.user.id || null).then(() => {
+      this.calendarConnected = true;
+      setTimeout(() => this.loadCalendarStatus(), 1000);
+    });
     this.snack.open('Please complete the Google login in your browser', 'OK', { duration: 4000 });
-    setTimeout(() => this.loadCalendarStatus(), 5000);
   }
 
   async disconnectCalendar() {
-    await this.ipc.disconnectCalendar();
+    await this.ipc.disconnectCalendar().then(() => {
+      this.calendarConnected = false;
+      this.loadCalendarStatus();
+    });
     this.snack.open('Disconnected from Google Calendar', 'OK', { duration: 2000 });
-    await this.loadCalendarStatus();
+  }
+
+  async loadCalendarEvents() {
+    const events = await this.ipc.getCalendarEvents(this.calendarId || null);
+    this.calendarEvents = events;
+    this.computeFreeSlots();
+  }
+
+  computeFreeSlots() {
+    // optional simple algorithm: just show busy events
+    this.busySlots = this.calendarEvents
+      .map(ev => ({
+        start: ev.start,
+        end: ev.end
+      }));
   }
 }
