@@ -132,6 +132,7 @@ export class DatabaseService {
 
       CREATE TABLE IF NOT EXISTS calendar_events (
                                                    id TEXT PRIMARY KEY,
+                                                   user_id TEXT,
                                                    calendar_id TEXT,
                                                    start INTEGER,
                                                    end INTEGER,
@@ -462,19 +463,6 @@ export class DatabaseService {
     return { ...payload, updated_at: now };
   }
 
-  public updateUserCalendarSync(payload: any) {
-    const now = Date.now();
-    this.db!.prepare(`
-      UPDATE users SET
-                     google_refresh_token = ?,
-                     google_calendar_id = ?,
-                     calendar_sync_enabled = ?,
-                     last_calendar_sync = ?
-      WHERE id = ?
-    `).run(payload.google_refresh_token, payload.google_calendar_id, payload.calendar_sync_enabled, payload.last_calendar_sync, payload.id);
-    return { ...payload, updated_at: now };
-  }
-
 // HEARTBEATS
   createHeartbeat(payload: any) {
     const id = payload.id || uuidv4();
@@ -508,6 +496,56 @@ export class DatabaseService {
   }
 
 // CALENDARS
+  public updateUserCalendarSync(payload: any) {
+    const now = Date.now();
+    this.db!.prepare(`
+      UPDATE users SET
+                     google_refresh_token = ?,
+                     google_calendar_id = ?,
+                     calendar_sync_enabled = ?,
+                     last_calendar_sync = ?
+      WHERE id = ?
+    `).run(payload.google_refresh_token, payload.google_calendar_id, payload.calendar_sync_enabled, payload.last_calendar_sync, payload.id);
+    return { ...payload, updated_at: now };
+  }
+
+  async upsertEventLocal(ev: any, ownerUserId: string) {
+    const stmt = this.db.prepare(`
+    INSERT INTO calendar_events (id, user_id, calendar_id, start, end, summary, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      user_id = excluded.user_id,
+      calendar_id = excluded.calendar_id,
+      start = excluded.start,
+      end = excluded.end,
+      summary = excluded.summary,
+      updated_at = excluded.updated_at
+  `);
+
+    const start = new Date(ev.start.dateTime || ev.start.date).getTime();
+    const end = new Date(ev.end.dateTime || ev.end.date).getTime();
+
+    stmt.run(ev.id, ownerUserId, ev.organizer?.email || ev.organizer?.displayName || '', start, end, ev.summary || '', Date.now());
+
+    // add a revision row for sync-to-remote (if you use revisions to push to supabase)
+    const revStmt = this.db.prepare(`
+    INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+    VALUES (?, ?, ?, ?, ?, ?, 0)
+  `);
+    revStmt.run(uuidv4(), 'calendar_events', ev.id, 1, JSON.stringify(ev), Date.now());
+  }
+
+  async deleteEventLocal(eventId: string) {
+    const stmt = this.db.prepare(`DELETE FROM calendar_events WHERE id = ?`);
+    stmt.run(eventId);
+
+    const revStmt = this.db.prepare(`
+    INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+    VALUES (?, ?, ?, ?, ?, ?, 0)
+  `);
+    revStmt.run(uuidv4(), 'calendar_events', eventId, 1, JSON.stringify({ deleted: true }), Date.now());
+  }
+
   async saveEventsLocally(events: any[]) {
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO calendar_events
