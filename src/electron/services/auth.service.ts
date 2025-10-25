@@ -3,7 +3,7 @@ import { AES, enc } from 'crypto-js';
 import { BrowserWindow } from 'electron';
 import { EventEmitter } from 'events';
 import type { Session } from '@supabase/supabase-js';
-import {localSession} from "../../drizzle/shema";
+import {localSession, users} from "../../drizzle/shema";
 import {eq} from "drizzle-orm";
 
 export class AuthService extends EventEmitter {
@@ -272,6 +272,13 @@ export class AuthService extends EventEmitter {
         return { ok: true };
     }
 
+    async updateCalendarInfo(payload: any) {
+        const { error } = await this.supabase.from('users').update(payload).eq('id', payload.id);
+        if (error) throw error;
+        this.dbService.updateUserCalendarSync(payload);
+        return { ok: true };
+    }
+
     getCurrentUser() {
         if (this.session) {
             const session = this.session;
@@ -284,10 +291,13 @@ export class AuthService extends EventEmitter {
         }
     }
 
-    async saveCalendarTokens(tokens) {
-        const encrypted = AES.encrypt(JSON.stringify(tokens), this.encryptionKey).toString();
-
+    async saveCalendarTokens(tokenData, userId: string) {
         const orm = this.dbService.getOrm();
+        const user: any = userId ? await this.getUserById(userId) : this.getCurrentUser()
+        const encrypted = AES.encrypt(JSON.stringify(tokenData), this.encryptionKey).toString();
+
+        if (!user) return;
+
         await orm.insert(localSession).values({
             id: 'google_calendar',
             session_encrypted: encrypted
@@ -295,5 +305,28 @@ export class AuthService extends EventEmitter {
             target: localSession.id,
             set: { session_encrypted: encrypted }
         });
+
+        const calendarId = await this.fetchPrimaryCalendar(tokenData.access_token);
+
+        const payload = {
+            id: user.id,
+            google_refresh_token: tokenData.refresh_token || user.google_refresh_token,
+            google_calendar_id: calendarId,
+            calendar_sync_enabled: 1,
+            last_calendar_sync: Date.now()
+        }
+
+        await this.updateCalendarInfo(payload);
+
+        return calendarId;
+    }
+
+    async fetchPrimaryCalendar(accessToken: string) {
+        const res = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const data = await res.json();
+        const primary = data.items.find((c: any) => c.primary);
+        return primary?.id || data.items[0]?.id;
     }
 }

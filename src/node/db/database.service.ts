@@ -130,6 +130,15 @@ export class DatabaseService {
         created_at INTEGER
       );
 
+      CREATE TABLE IF NOT EXISTS calendar_events (
+                                                   id TEXT PRIMARY KEY,
+                                                   calendar_id TEXT,
+                                                   start INTEGER,
+                                                   end INTEGER,
+                                                   summary TEXT,
+                                                   updated_at INTEGER
+      );
+
       CREATE TABLE IF NOT EXISTS revisions (
         id TEXT PRIMARY KEY,
         object_type TEXT,
@@ -453,6 +462,19 @@ export class DatabaseService {
     return { ...payload, updated_at: now };
   }
 
+  public updateUserCalendarSync(payload: any) {
+    const now = Date.now();
+    this.db!.prepare(`
+      UPDATE users SET
+                     google_refresh_token = ?,
+                     google_calendar_id = ?,
+                     calendar_sync_enabled = ?,
+                     last_calendar_sync = ?
+      WHERE id = ?
+    `).run(payload.google_refresh_token, payload.google_calendar_id, payload.calendar_sync_enabled, payload.last_calendar_sync, payload.id);
+    return { ...payload, updated_at: now };
+  }
+
 // HEARTBEATS
   createHeartbeat(payload: any) {
     const id = payload.id || uuidv4();
@@ -483,5 +505,35 @@ export class DatabaseService {
   `).run(uuidv4(), 'heartbeats', id, 1, JSON.stringify(payload), now);
 
     return payload;
+  }
+
+// CALENDARS
+  async saveEventsLocally(events: any[]) {
+    const stmt = this.db.prepare(`
+      INSERT OR REPLACE INTO calendar_events
+      (id, calendar_id, start, end, summary, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    const revStmt = this.db.prepare(`
+      INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+      VALUES (?, ?, ?, ?, ?, ?, 0)
+    `);
+
+    for (const ev of events) {
+      const start = new Date(ev.start.dateTime || ev.start.date).getTime();
+      const end = new Date(ev.end.dateTime || ev.end.date).getTime();
+
+      stmt.run(
+          ev.id,
+          ev.organizer?.email || '',
+          start,
+          end,
+          ev.summary || '',
+          Date.now()
+      );
+
+      revStmt.run(uuidv4(), 'calendar_events', ev.id, 1, JSON.stringify(ev), Date.now());
+    }
   }
 }

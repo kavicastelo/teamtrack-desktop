@@ -5,9 +5,10 @@ declare global {
   interface Window {
     electronAPI: any;
     calendarAPI: {
-      connect(): Promise<any>;
+      connect(userId?: string|null): Promise<any>;
       disconnect(): Promise<any>;
-      getStatus(): Promise<{ connected: boolean; calendar_id?: string; sync_enabled?: boolean }>;
+      getStatus(userId?: string|null): Promise<{ connected: boolean; calendar_id?: string; sync_enabled?: boolean }>;
+      getEvents(calendarId?: string|null): Promise<any>;
     };
   }
 }
@@ -120,19 +121,16 @@ export class IpcService {
     return window.electronAPI.onDeepLink(cb);
   }
 
-  async openGoogleOAuth() {
-    return window.electronAPI.openGoogleOAuth();
+  connectCalendar(userId?: string|null) {
+    return window.electronAPI.calendarAPI.connect(userId);
   }
-
-  connectCalendar() {
-    return window.electronAPI.calendarAPI.connect();
-  }
-
   disconnectCalendar() {
     return window.electronAPI.calendarAPI.disconnect();
   }
-
-  getCalendarStatus() {
-    return window.electronAPI.calendarAPI.getStatus();
+  getCalendarStatus(userId?: string|null) {
+    return window.electronAPI.calendarAPI.getStatus(userId);
+  }
+  async getCalendarEvents(calendarId?: string|null) {
+    return window.electronAPI.calendarAPI.getEvents(calendarId);
   }
 }
