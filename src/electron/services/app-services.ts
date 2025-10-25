@@ -52,8 +52,9 @@ export async function initializeAppServices(mainWindow: BrowserWindow) {
         mainWindow,
     });
 
-    calendarSync = new GoogleCalendarSyncService(dbService);
-    calendarSync.start();
+    calendarSync = new GoogleCalendarSyncService(dbService, authService);
+
+    await calendarSync.start();
 
     heartbeatService = new HeartbeatService(authService, dbService);
     idleMonitor = new IdleMonitorService(120, 5000);
@@ -72,7 +73,7 @@ export async function initializeAppServices(mainWindow: BrowserWindow) {
 
     console.log("[Main] Services initialized.");
 
-    return { dbService, syncService, authService, heartbeatService };
+    return { dbService, syncService, authService, heartbeatService, calendarSync };
 }
 
 export async function shutdownServices() {

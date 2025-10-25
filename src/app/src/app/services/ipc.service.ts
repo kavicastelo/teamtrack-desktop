@@ -9,6 +9,9 @@ declare global {
       disconnect(): Promise<any>;
       getStatus(userId?: string|null): Promise<{ connected: boolean; calendar_id?: string; sync_enabled?: boolean }>;
       getEvents(calendarId?: string|null): Promise<any>;
+      syncCalendar(userId?: string|null): Promise<any>;
+      createEvent(payload: any): Promise<any>;
+      deleteEvent(payload: any): Promise<any>;
     };
   }
 }
@@ -132,5 +135,14 @@ export class IpcService {
   }
   async getCalendarEvents(calendarId?: string|null) {
     return window.electronAPI.calendarAPI.getEvents(calendarId);
+  }
+  async syncCalendar(userId?: string|null) {
+    return window.electronAPI.calendarAPI.syncCalendar(userId);
+  }
+  async createCalendarEvent(payload: any) {
+    return window.electronAPI.calendarAPI.createEvent(payload);
+  }
+  async deleteCalendarEvent(payload: any) {
+    return window.electronAPI.calendarAPI.deleteEvent(payload);
   }
 }

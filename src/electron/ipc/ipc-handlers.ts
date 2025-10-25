@@ -4,14 +4,16 @@ import type { SupabaseSyncService } from "../../node/supabase-sync.service.js";
 import type { AuthService } from "../services/auth.service";
 import type { HeartbeatService } from "../../node/heartbeat.service";
 import {registerGoogleCalendarIPC} from "./google-calendar-ipc";
+import {GoogleCalendarSyncService} from "../../node/google-calendar-sync.service";
 
 export function registerIPCHandlers(services: {
     dbService: DatabaseService;
     syncService: SupabaseSyncService;
     authService: AuthService;
     heartbeatService: HeartbeatService;
+    calendarSync: GoogleCalendarSyncService;
 }) {
-    const { dbService, syncService, authService } = services;
+    const { dbService, syncService, authService, heartbeatService, calendarSync  } = services;
 
     /** Authentication */
     ipcMain.handle("auth:signInEmail", (_, email) => authService.signIn(email));
@@ -166,5 +168,5 @@ export function registerIPCHandlers(services: {
     ipcMain.handle("db:originPull", async (_) => syncService.pullAllRemoteUpdates());
 
     /** Google Calendar **/
-    registerGoogleCalendarIPC(authService, dbService);
+    registerGoogleCalendarIPC(authService, dbService, calendarSync);
 }

@@ -44,6 +44,7 @@ export const users = sqliteTable('users', {
 
 export const calendar_events = sqliteTable('calendar_events', {
     id: text('id').primaryKey(),
+    user_id: text('user_id').notNull(),
     calendar_id: text('calendar_id').notNull(),
     start: integer('start').notNull(),
     end: integer('end').notNull(),

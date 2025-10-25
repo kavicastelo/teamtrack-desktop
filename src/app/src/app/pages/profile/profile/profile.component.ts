@@ -148,6 +148,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   async loadCalendarEvents() {
     const events = await this.ipc.getCalendarEvents(this.calendarId || null);
+    console.log(events)
     this.calendarEvents = events;
     this.computeFreeSlots();
   }

@@ -1,11 +1,12 @@
 import {ipcMain, shell} from 'electron';
 import {AuthService} from '../services/auth.service.js';
 import {DatabaseService} from '../../node/db/database.service.js';
+import {GoogleCalendarSyncService} from '../../node/google-calendar-sync.service.js';
 import {calendar_events, users} from "../../drizzle/shema";
 import {asc, eq} from "drizzle-orm";
 import crypto from "crypto";
 
-export function registerGoogleCalendarIPC(authService: AuthService, dbService: DatabaseService) {
+export function registerGoogleCalendarIPC(authService: AuthService, dbService: DatabaseService, calendarSync: GoogleCalendarSyncService) {
     ipcMain.handle("google-calendar:connect", async (_, userId: string | null) => {
         const clientId = process.env.GOOGLE_CLIENT_ID!;
         const redirectUri = "http://127.0.0.1:47845/google-auth";
@@ -51,8 +52,33 @@ export function registerGoogleCalendarIPC(authService: AuthService, dbService: D
         };
     });
 
-    ipcMain.handle("google-calendar:get-events", async (_, calendarId?: string|null) => {
+    ipcMain.handle("google-calendar:sync", async (_, userId: string|null) => {
+        if (!userId) throw new Error("userId required for sync");
+        const count = await calendarSync.syncGoogleToLocal(userId);
+        return { synced: count };
+    });
+
+    ipcMain.handle("google-calendar:create-event", async (_, { userId, start, end, summary }) => {
+        if (!userId) throw new Error("userId required");
+        const ev = await calendarSync.createEventForUser(userId, start, end, summary);
+        return ev;
+    });
+
+    ipcMain.handle("google-calendar:delete-event", async (_, { userId, eventId }) => {
+        if (!userId) throw new Error("userId required");
+        await calendarSync.deleteEventForUser(userId, eventId);
+        return { ok: true };
+    });
+
+    ipcMain.handle("google-calendar:ensure-token", async (_, userId: string|null) => {
+        if (!userId) throw new Error("userId required");
+        const tokens = await authService.ensureAccessToken(userId);
+        return tokens;
+    });
+
+    ipcMain.handle("google-calendar:get-events", async (_, { calendarId, userId } : any) => {
         const orm = dbService.getOrm();
+        if (userId) return await orm.select().from(calendar_events).where(eq(calendar_events.user_id, userId)).orderBy(asc(calendar_events.start));
         if (calendarId) return await orm.select().from(calendar_events).where(eq(calendar_events.calendar_id, calendarId)).orderBy(asc(calendar_events.start));
         return await orm.select().from(calendar_events).orderBy(asc(calendar_events.start));
     });
