@@ -18,9 +18,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     },
     calendarAPI: {
         connect: (userId?: string) => ipcRenderer.invoke('google-calendar:connect', userId),
-        disconnect: () => ipcRenderer.invoke('google-calendar:disconnect'),
+        disconnect: (userId?: string) => ipcRenderer.invoke('google-calendar:disconnect', userId),
         getStatus: (userId?: string) => ipcRenderer.invoke('google-calendar:get-status', userId),
-        getEvents: (calendarId?: string) => ipcRenderer.invoke('google-calendar:get-events', calendarId),
+        getEvents: (payload: any) => ipcRenderer.invoke('google-calendar:get-events', payload),
         syncCalendar: (userId?: string) => ipcRenderer.invoke('google-calendar:sync', userId),
         createEvent: (payload: any) => ipcRenderer.invoke('google-calendar:create-event', payload),
         deleteEvent: (payload: any) => ipcRenderer.invoke('google-calendar:delete-event', payload),

@@ -1,64 +1,55 @@
-<div class="profile-root dark-theme">
-  <mat-card class="card">
-    <h2 class="title">Your Profile</h2>
+<div class="profile" [class.loading]="loading">
 
-    <div class="avatar-container">
-      <img [src]="avatarUrl" class="avatar" alt="avatar">
+  <div class="top">
+    <img class="avatar" [src]="user.avatar_url || 'assets/default-avatar.svg'" alt="avatar" />
+    <div class="info">
+      <h2>{{ user.full_name }}</h2>
+      <p class="role">{{ user.role || 'Member' }}</p>
+    </div>
+  </div>
+
+  <section class="status">
+    <h3>Calendar Sync</h3>
+
+    <div class="status-line">
+      <span class="dot" [class.on]="calendarStatus?.connected"></span>
+      <span class="label">
+        Google: {{ calendarStatus?.connected ? 'CONNECTED' : 'NOT CONNECTED' }}
+      </span>
     </div>
 
-    <form [formGroup]="profileForm">
-
-      <mat-form-field appearance="fill" class="full">
-        <mat-label>Email</mat-label>
-        <input matInput formControlName="email">
-      </mat-form-field>
-
-      <mat-form-field appearance="fill" class="full">
-        <mat-label>Full name</mat-label>
-        <input matInput formControlName="full_name" required>
-      </mat-form-field>
-
-      <mat-form-field appearance="fill" class="full">
-        <mat-label>Timezone</mat-label>
-        <input matInput formControlName="timezone">
-      </mat-form-field>
-
-      <mat-slide-toggle formControlName="calendar_sync_enabled">
-        Enable Google Calendar Sync
-      </mat-slide-toggle>
-
-      <div class="calendar-actions">
-        <button mat-stroked-button color="primary" (click)="connectCalendar()" *ngIf="!calendarConnected">
-          Connect Google Calendar
-        </button>
-        <button mat-stroked-button color="warn" (click)="disconnectCalendar()" *ngIf="calendarConnected">
-          Disconnect
-        </button>
-      </div>
-
-      <div *ngIf="calendarConnected" class="calendar-status">
-        Connected to: <strong>{{ calendarId || 'unknown' }}</strong>
-      </div>
-
-      <div *ngIf="calendarConnected">
-        <h3>Calendar busy slots</h3>
-        <div *ngFor="let slot of busySlots">
-          <div>{{ slot.start | date:'short' }} → {{ slot.end | date:'short' }}</div>
-        </div>
-      </div>
-
-      <mat-form-field appearance="fill" class="full">
-        <mat-label>Availability (json or hour range)</mat-label>
-        <textarea matInput rows="2" formControlName="available_times"></textarea>
-      </mat-form-field>
-
-      <button mat-flat-button
-              color="primary"
-              class="full"
-              (click)="save()"
-              [disabled]="saving">
-        {{ saving ? 'Saving...' : 'Save changes' }}
+    <div class="actions" *ngIf="isSelf">
+      <button (click)="connect()" *ngIf="!calendarStatus?.connected">
+        Connect Google
       </button>
-    </form>
-  </mat-card>
+
+      <button (click)="syncNow()" [disabled]="syncing" *ngIf="calendarStatus?.connected">
+        {{ syncing ? 'Syncing...' : 'Sync Now' }}
+      </button>
+
+      <button class="danger" (click)="disconnect()" *ngIf="calendarStatus?.connected">
+        Disconnect
+      </button>
+    </div>
+  </section>
+
+  <section class="timeline">
+    <h3>Availability (Next 7 Days)</h3>
+    <div class="bars">
+      <div
+        *ngFor="let d of getTimelineDays()"
+        class="bar"
+        [class.busy]="d.busy"
+        [title]="d.date | date:'EEE dd'"
+      ></div>
+    </div>
+  </section>
+
+  <section class="upcoming">
+    <h3>Upcoming Blocks</h3>
+    <div *ngFor="let ev of upcoming" class="event">
+      <strong>{{ ev.summary || '(No title)' }}</strong>
+      <span>{{ ev.start | date:'EEE HH:mm' }} → {{ ev.end | date:'HH:mm' }}</span>
+    </div>
+  </section>
 </div>

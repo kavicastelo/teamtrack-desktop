@@ -287,12 +287,157 @@ export class SupabaseSyncService extends EventEmitter {
             } catch (err) {
                 this.sendToUI("sync:error", {message: "Failed to handle remote change", error: err});
             }
+        } else if (table === 'users') {
+            try {
+                const sql = `
+                    INSERT INTO users (id, email, full_name, role, avatar_url, timezone, calendar_sync_enabled, google_calendar_id, available_times, updated_at, invited_at, google_refresh_token, last_calendar_sync)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO 
+                    UPDATE SET
+                        email=excluded.email,
+                        full_name=excluded.full_name,
+                        role=excluded.role,
+                        avatar_url=excluded.avatar_url,
+                        timezone=excluded.timezone,
+                        calendar_sync_enabled=excluded.calendar_sync_enabled,
+                        google_calendar_id=excluded.google_calendar_id,
+                        available_times=excluded.available_times,
+                        updated_at=excluded.updated_at,
+                        invited_at=excluded.invited_at,
+                        google_refresh_token=excluded.google_refresh_token,
+                        last_calendar_sync=excluded.last_calendar_sync
+                `;
+                this.dbService.query(sql, [
+                    record.id,
+                    record.email,
+                    record.full_name,
+                    record.role,
+                    record.avatar_url,
+                    record.timezone,
+                    record.calendar_sync_enabled,
+                    record.google_calendar_id,
+                    record.available_times,
+                    record.updated_at,
+                    record.invited_at,
+                    record.google_refresh_token,
+                    record.last_calendar_sync
+                ]);
+
+                this.sendToUI("sync:remoteUpdate", record);
+            } catch (err) {
+                this.sendToUI("sync:error", {message: "Failed to handle remote change", error: err});
+            }
+        } else if (table === 'team_members') {
+            try {
+                const sql = `
+                    INSERT INTO team_members (id, team_id, user_id, role, created_at)
+                    VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                    UPDATE SET
+                        id=excluded.id,
+                        team_id=excluded.team_id,
+                        user_id=excluded.user_id,
+                        role=excluded.role,
+                        created_at=excluded.created_at
+                `;
+                this.dbService.query(sql, [
+                    record.id,
+                    record.team_id,
+                    record.user_id,
+                    record.role,
+                    record.created_at
+                ]);
+                this.sendToUI("sync:remoteUpdate", record);
+            } catch (err) {
+                this.sendToUI("sync:error", {message: "Failed to handle remote change", error: err});
+            }
+        } else if (table === 'calendar_events') {
+            try {
+                const sql = `
+                    INSERT INTO calendar_events (id, user_id, calendar_id, start, end, summary, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                    UPDATE SET
+                        id=excluded.id,
+                        user_id=excluded.user_id,
+                        calendar_id=excluded.calendar_id,
+                        start=excluded.start,
+                        end=excluded.end,
+                        summary=excluded.summary,
+                        updated_at=excluded.updated_at
+                `;
+                this.dbService.query(sql, [
+                    record.id,
+                    record.user_id,
+                    record.calendar_id,
+                    record.start,
+                    record.end,
+                    record.summary,
+                    record.updated_at
+                ]);
+                this.sendToUI("sync:remoteUpdate", record);
+            } catch (err) {
+                this.sendToUI("sync:error", {message: "Failed to handle remote change", error: err});
+            }
+        } else if (table === 'events') {
+            try {
+                const sql = `
+                    INSERT INTO events (id, actor, action, object_type, object_id, payload, created_at, raw)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                    UPDATE SET
+                        id=excluded.id,
+                        actor=excluded.actor,
+                        action=excluded.action,
+                        object_type=excluded.object_type,
+                        object_id=excluded.object_id,
+                        payload=excluded.payload,
+                        created_at=excluded.created_at,
+                        raw=excluded.raw
+                `;
+                this.dbService.query(sql, [
+                    record.id,
+                    record.actor,
+                    record.action,
+                    record.object_type,
+                    record.object_id,
+                    record.payload,
+                    record.created_at,
+                    record.raw
+                ]);
+                this.sendToUI("sync:remoteUpdate", record);
+            } catch (err) {
+                this.sendToUI("sync:error", {message: "Failed to handle remote change", error: err});
+            }
+        } else if (table === 'attachments') {
+            try {
+                const sql = `
+                    INSERT INTO attachments (id, taskId, filename, mimetype, size, supabase_path, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                    UPDATE SET
+                        id=excluded.id,
+                        taskId=excluded.taskId,
+                        filename=excluded.filename,
+                        mimetype=excluded.mimetype,
+                        size=excluded.size,
+                        supabase_path=excluded.supabase_path,
+                        created_at=excluded.created_at
+                `;
+                this.dbService.query(sql, [
+                    record.id,
+                    record.taskId,
+                    record.filename,
+                    record.mimetype,
+                    record.size,
+                    record.supabase_path,
+                    record.created_at
+                ]);
+                this.sendToUI("sync:remoteUpdate", record);
+            } catch (err) {
+                this.sendToUI("sync:error", {message: "Failed to handle remote change", error: err});
+            }
         }
     }
 
     /** 📡 Subscribe to realtime task changes */
     async startRealtimeSub() {
-        const channels = ["tasks", "revisions", "projects", "teams", "attachments", "events", "users", "team_members"];
+        const channels = ["tasks", "revisions", "projects", "teams", "attachments", "events", "users", "team_members", "calendar_events"];
 
         for (const channel of channels) {
             try {
@@ -538,8 +683,8 @@ export class SupabaseSyncService extends EventEmitter {
                     if (!local || new Date(record.updated_at).getTime() > new Date(local.updated_at).getTime()) {
                         this.dbService.db
                             .prepare(
-                                `INSERT INTO users (id, email, full_name, role, avatar_url, timezone, calendar_sync_enabled, google_calendar_id, available_times, updated_at, created_at)
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                                `INSERT INTO users (id, email, full_name, role, avatar_url, timezone, calendar_sync_enabled, google_calendar_id, available_times, updated_at, invited_at, google_refresh_token, last_calendar_sync)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
                                 UPDATE SET
                                     email=excluded.email,
                                     full_name=excluded.full_name,
@@ -550,9 +695,11 @@ export class SupabaseSyncService extends EventEmitter {
                                     google_calendar_id=excluded.google_calendar_id,
                                     available_times=excluded.available_times,
                                     updated_at=excluded.updated_at,
-                                    created_at=excluded.created_at`
+                                    invited_at=excluded.invited_at,
+                                    google_refresh_token=excluded.google_refresh_token,
+                                    last_calendar_sync=excluded.last_calendar_sync`
                             )
-                            .run(record.id, record.email, record.full_name, record.role, record.avatar_url, record.timezone, record.calendar_sync_enabled, record.google_calendar_id, record.available_times, record.updated_at, record.created_at);
+                            .run(record.id, record.email, record.full_name, record.role, record.avatar_url, record.timezone, record.calendar_sync_enabled, record.google_calendar_id, record.available_times, record.updated_at, record.invited_at, record.google_refresh_token, record.last_calendar_sync);
                     }
                 }
 
@@ -592,11 +739,45 @@ export class SupabaseSyncService extends EventEmitter {
             } catch (err) {
                 this.sendToUI("sync:error", {message: "Failed to pull team members", error: err});
             }
+        } else if (tabel === 'calendar_events') {
+            try {
+                const {
+                    data,
+                    error
+                } = await this.client.from("calendar_events").select("*").order("updated_at", {ascending: true});
+                if (error) throw error;
+                if (!Array.isArray(data)) return;
+
+                for (const record of data) {
+                    const local = this.dbService.db.prepare("SELECT * FROM calendar_events WHERE id = ?").get(record.id);
+                    if (!local || new Date(record.updated_at).getTime() > new Date(local.updated_at).getTime()) {
+                        this.dbService.db
+                            .prepare(
+                                `INSERT INTO calendar_events (id, user_id, calendar_id, start, end, summary, updated_at, raw)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                                UPDATE SET
+                                    user_id=excluded.user_id,
+                                    calendar_id=excluded.calendar_id,
+                                    start=excluded.start,
+                                    end=excluded.end,
+                                    summary=excluded.summary,
+                                    updated_at=excluded.updated_at
+                                    raw=excluded.raw`
+                            )
+                            .run(record.id, record.user_id, record.calendar_id, record.start, record.end, record.summary, record.updated_at, record.raw);
+                    }
+                }
+
+                this.sendToUI("sync:pull", {count: data.length});
+                this.sendToUI("sync:success", {message: "Pulled " + data.length + " calendar events"});
+            } catch (err) {
+                this.sendToUI("sync:error", {message: "Failed to pull calendar events", error: err});
+            }
         }
     }
 
     async pullAllRemoteUpdates() {
-        const channels = ["tasks", "projects", "teams", "revisions", "attachments", "events", "users", "team_members"];
+        const channels = ["tasks", "projects", "teams", "revisions", "attachments", "events", "users", "team_members", "calendar_events"];
         for (const channel of channels) {
             await this.pullRemoteUpdates(channel);
         }
