@@ -98,7 +98,6 @@ export class AuthRegisterComponent implements OnInit, OnDestroy {
     try {
       setTimeout(() => this.checking = false, 1000);
       this.session = await this.auth.getUser();
-      console.log(this.session)
       if (!this.session || !this.session.user) {
         console.warn('[Register] No user session found — redirecting to login');
         // await this.router.navigate(['/auth/login']);

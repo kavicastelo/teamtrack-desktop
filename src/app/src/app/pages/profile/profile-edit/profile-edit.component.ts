@@ -15,6 +15,7 @@ import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { IpcService } from '../../../services/ipc.service';
 import { AuthService } from '../../../services/auth.service';
+import {MatDivider} from '@angular/material/divider';
 
 @Component({
   selector: 'app-profile',
@@ -28,7 +29,8 @@ import { AuthService } from '../../../services/auth.service';
     MatSnackBarModule,
     MatButtonModule,
     MatIconModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    MatDivider
   ],
   templateUrl: './profile-edit.component.html',
   styleUrls: ['./profile-edit.component.scss']
@@ -107,6 +109,7 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
     const payload = {
       id: this.user.id,
       email: this.user.email,
+      avatar_url: this.avatarUrl,
       calendar_sync_enabled: this.profileForm.value.calendar_sync_enabled ? 1 : 0,
       ...this.profileForm.getRawValue(),
     };
@@ -163,5 +166,19 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
         start: ev.start,
         end: ev.end
       }));
+  }
+
+  getInitials(name: string): string {
+    if (!name) return '?';
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  }
+
+  changeAvatar() {
+    this.snack.open('Custom avatars coming soon 👀', 'OK', { duration: 2000 });
   }
 }

@@ -15,6 +15,13 @@
       height: 64px;
       border-radius: 50%;
       margin-right: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 600;
+      color: white;
+      text-align: center;
     }
 
     .role {
@@ -86,32 +93,137 @@
         width: 20px;
         height: 48px;
         border-radius: 4px;
-        background: #222;
         opacity: 0.3;
         transition: 0.2s;
-
-        &.busy {
-          background: #ef4444;
-          opacity: 0.9;
-        }
 
         &:hover {
           transform: scale(1.1);
         }
       }
     }
+    .bars .bar {
+      background: linear-gradient(#333, #222);
+      &.busy {
+        background: #ef4444;
+        box-shadow: 0 0 6px #ef4444;
+      }
+    }
   }
 
   .upcoming {
     margin-top: 22px;
+    max-height: 300px;
+    overflow-y: auto;
 
-    .event {
-      margin-bottom: 6px;
-      font-size: 14px;
-      opacity: 0.8;
+    &::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
 
-      strong {
-        display: block;
+    &::-webkit-scrollbar-track {
+      background: #333;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #444;
+    }
+
+    .event-card {
+      background: #1a1a1a;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #222;
+      transition: 0.2s;
+
+      &:hover {
+        background: #222;
+        border-color: #333;
+        transform: translateY(-2px);
+      }
+
+      .title-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 4px;
+
+        .icons {
+          opacity: .7;
+          margin-right: 6px;
+        }
+
+        strong {
+          color: #fff;
+        }
+      }
+
+      .time {
+        opacity: .8;
+
+        &.all-day {
+          color: #60a5fa;
+        }
+      }
+
+      .meta {
+        font-size: 12px;
+        opacity: .6;
+        margin-top: 4px;
+      }
+
+      .pill {
+        display: inline-block;
+        background: #333a;
+        padding: 2px 6px;
+        border-radius: 6px;
+        margin-left: 6px;
+        font-size: 11px;
+      }
+
+      .attendees {
+        display: flex;
+        margin-top: 6px;
+
+        .attendee {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          margin-right: -5px;
+          border: 2px solid #111;
+          font-size: 10px;
+          line-height: 16px;
+          text-align: center;
+          color: #fff;
+          font-weight: 600;
+          text-transform: uppercase;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: default;
+          transition: 0.2s;
+          user-select: none;
+        }
+
+        // statuses from Google API
+        .attendee[title='accepted'] {
+          box-shadow: 0 0 4px #22c55e;
+        }
+
+        .attendee[title='tentative'] {
+          box-shadow: 0 0 4px #eab308;
+        }
+
+        .attendee[title='declined'] {
+          filter: grayscale(1);
+          opacity: .4;
+        }
+
+        .more {
+          font-size: 12px;
+          color: #aaa;
+          margin-left: 6px;
+        }
       }
     }
   }

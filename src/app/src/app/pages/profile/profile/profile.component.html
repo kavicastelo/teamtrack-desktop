@@ -1,7 +1,12 @@
 <div class="profile" [class.loading]="loading">
 
   <div class="top">
-    <img class="avatar" [src]="user.avatar_url || 'assets/default-avatar.svg'" alt="avatar" />
+    <div *ngIf="!user.avatar_url"
+         class="avatar"
+         [style.background]="avatarColor(user.full_name)">
+      {{initials(user.full_name)}}
+    </div>
+    <img *ngIf="user.avatar_url" class="avatar" [src]="user.avatar_url" alt="avatar" />
     <div class="info">
       <h2>{{ user.full_name }}</h2>
       <p class="role">{{ user.role || 'Member' }}</p>
@@ -46,10 +51,66 @@
   </section>
 
   <section class="upcoming">
-    <h3>Upcoming Blocks</h3>
-    <div *ngFor="let ev of upcoming" class="event">
-      <strong>{{ ev.summary || '(No title)' }}</strong>
-      <span>{{ ev.start | date:'EEE HH:mm' }} → {{ ev.end | date:'HH:mm' }}</span>
+    <h3>Upcoming</h3>
+
+    <div *ngFor="let ev of upcoming" class="event-card"
+         [title]="
+       (ev.summary || 'No Title') + '\n' +
+       (ev.start | date:'EEE MMM dd HH:mm') + ' → ' + (ev.end | date:'HH:mm') + '\n' +
+       visibility(ev) + ' · ' +
+       ((ev | isRecurring) ? 'Recurring' : 'Single') + '\n' +
+       getAttendees(convertJson(ev)).length + ' attendee(s)'
+     "
+    >
+      <div class="title-row">
+      <span class="icons">
+        <span *ngIf="convertJson(ev) | isBirthday">🎂</span>
+        <span *ngIf="convertJson(ev) | isRecurring">🔁</span>
+        <span>{{ convertJson(ev) | visibilityIcon }}</span>
+      </span>
+
+        <strong>{{ ev.summary || '(No title)' }}</strong>
+      </div>
+
+      <div class="time" [ngClass]="{'all-day': (convertJson(ev) | allDay)}">
+        <ng-container *ngIf="!(convertJson(ev) | allDay)">
+          {{ ev.start | date:'EEE HH:mm' }} → {{ ev.end | date:'HH:mm' }}
+        </ng-container>
+
+        <ng-container *ngIf="convertJson(ev) | allDay">
+          All-day
+        </ng-container>
+      </div>
+
+      <div class="meta">
+        By {{ convertJson(ev) | creatorName }}
+        <span class="pill" *ngIf="ev | isBirthday">
+        🎉 Turning {{ computeAgeTurning(ev) }}
+      </span>
+      </div>
+
+      <div class="attendees-row">
+        <ng-container *ngTemplateOutlet="attendeeTpl; context:{ev: convertJson(ev)}"></ng-container>
+      </div>
     </div>
   </section>
+
+  <ng-template #attendeeTpl let-ev="ev">
+    <div class="attendees" *ngIf="getAttendees(ev).length > 0">
+      <div *ngFor="let a of getAttendees(ev) | slice:0:5"
+           class="attendee"
+           [class.accepted]="a.responseStatus === 'accepted'"
+           [class.tentative]="a.responseStatus === 'tentative'"
+           [class.declined]="a.responseStatus === 'declined'"
+           [style.background]="avatarColor(a)"
+           [title]="(a.displayName || a.email) + ' · ' + a.responseStatus">
+
+        {{ initials(a) }}
+      </div>
+
+      <span *ngIf="getAttendees(ev).length > 5" class="more">
+        +{{ getAttendees(ev).length - 5 }}
+    </span>
+    </div>
+  </ng-template>
 </div>
