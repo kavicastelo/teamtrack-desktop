@@ -761,7 +761,7 @@ export class SupabaseSyncService extends EventEmitter {
                                     start=excluded.start,
                                     end=excluded.end,
                                     summary=excluded.summary,
-                                    updated_at=excluded.updated_at
+                                    updated_at=excluded.updated_at,
                                     raw=excluded.raw`
                             )
                             .run(record.id, record.user_id, record.calendar_id, record.start, record.end, record.summary, record.updated_at, record.raw);
@@ -771,6 +771,7 @@ export class SupabaseSyncService extends EventEmitter {
                 this.sendToUI("sync:pull", {count: data.length});
                 this.sendToUI("sync:success", {message: "Pulled " + data.length + " calendar events"});
             } catch (err) {
+                console.log(err)
                 this.sendToUI("sync:error", {message: "Failed to pull calendar events", error: err});
             }
         }

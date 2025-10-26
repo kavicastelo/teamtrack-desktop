@@ -12,6 +12,8 @@ import {MatListItem, MatNavList} from '@angular/material/list';
 import {MatTooltip} from '@angular/material/tooltip';
 import {MessageContainerComponent} from './components/message-container/message-container.component';
 import {AuthService} from './services/auth.service';
+import {ProfileComponent} from './pages/profile/profile/profile.component';
+import {MatDialog} from '@angular/material/dialog';
 
 export interface SyncStatus {
   type: 'pull' | 'remoteUpdate';
@@ -35,7 +37,8 @@ export class AppComponent implements OnInit, OnDestroy {
   constructor(
     private ipc: IpcService,
     private router: Router,
-    private auth: AuthService
+    private auth: AuthService,
+    private dialog: MatDialog
   ) {
     this.router.routeReuseStrategy.shouldReuseRoute = () => false;
   }
@@ -46,7 +49,6 @@ export class AppComponent implements OnInit, OnDestroy {
   async ngOnInit() {
     this.initSyncStatus();
     this.trackCurrentRoute();
-    this.loadUserProfile().then();
     this.listenForPresence();
 
     // 👇 Listen for deep-link events from Electron
@@ -114,19 +116,6 @@ export class AppComponent implements OnInit, OnDestroy {
     return 'TeamTrack';
   }
 
-  // ────────────────────────────────
-  // USER / SESSION MANAGEMENT
-  // ────────────────────────────────
-  async loadUserProfile() {
-    // try {
-    //   const { data, error } = await this.ipc.getUserProfile();
-    //   if (error) throw error;
-    //   this.userProfile = data;
-    // } catch (err) {
-    //   console.error('Failed to load profile', err);
-    // }
-  }
-
   async logout() {
     try {
       await this.auth.signOut();
@@ -155,12 +144,16 @@ export class AppComponent implements OnInit, OnDestroy {
     this.drawer.toggle().then();
   }
 
+  // ────────────────────────────────
+  // AUTH
+  // ────────────────────────────────
   private async initAuth() {
-    const user = await this.auth.restoreSession();
-    this.userProfile = user;
-    if (!user && !window.location.href.includes('auth/callback')) {
-      await this.router.navigate(['/auth/login']);
-    }
+    await this.auth.restoreSession().then(async (r) => {
+      this.userProfile = r;
+      if (!r && !window.location.href.includes('auth/callback')) {
+        await this.router.navigate(['/auth/login']);
+      }
+    });
   }
 
   // 👇 Process the incoming deep link
@@ -176,5 +169,29 @@ export class AppComponent implements OnInit, OnDestroy {
   // ────────────────────────────────
   pullOrigin() {
     this.ipc.pullRemoteUpdates().then();
+  }
+
+  // ────────────────────────────────
+  // OPEN PROFILE
+  // ────────────────────────────────
+  openUserProfile() {
+    const userMeta = this.userProfile.user.user_metadata
+    const user = {
+      id: this.userProfile.user.id,
+      full_name: userMeta.full_name,
+      email: userMeta.email,
+      role: this.userProfile.user.role,
+      avatar_url: userMeta.avatar_url
+    }
+    const ref = this.dialog.open(ProfileComponent, {
+      width: '500px',
+      data: { user: user, currentUserId: this.userProfile.user.id }
+    });
+
+    ref.afterClosed().subscribe((result) => {
+      if (result) {
+        // refresh
+      }
+    });
   }
 }

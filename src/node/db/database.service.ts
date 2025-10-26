@@ -512,21 +512,22 @@ export class DatabaseService {
 
   async upsertEventLocal(ev: any, ownerUserId: string) {
     const stmt = this.db.prepare(`
-    INSERT INTO calendar_events (id, user_id, calendar_id, start, end, summary, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO calendar_events (id, user_id, calendar_id, start, end, summary, updated_at, raw)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       user_id = excluded.user_id,
       calendar_id = excluded.calendar_id,
       start = excluded.start,
       end = excluded.end,
       summary = excluded.summary,
-      updated_at = excluded.updated_at
+      updated_at = excluded.updated_at,
+      raw = excluded.raw
   `);
 
     const start = new Date(ev.start.dateTime || ev.start.date).getTime();
     const end = new Date(ev.end.dateTime || ev.end.date).getTime();
 
-    stmt.run(ev.id, ownerUserId, ev.organizer?.email || ev.organizer?.displayName || '', start, end, ev.summary || '', Date.now());
+    stmt.run(ev.id, ownerUserId, ev.organizer?.email || ev.organizer?.displayName || '', start, end, ev.summary || '', Date.now(), JSON.stringify(ev));
 
     const payload = {
       id: ev.id,
@@ -554,34 +555,5 @@ export class DatabaseService {
     VALUES (?, ?, ?, ?, ?, ?, 0)
   `);
     revStmt.run(uuidv4(), 'calendar_events', eventId, 1, JSON.stringify({ deleted: true }), Date.now());
-  }
-
-  async saveEventsLocally(events: any[]) {
-    const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO calendar_events
-      (id, calendar_id, start, end, summary, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-
-    const revStmt = this.db.prepare(`
-      INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
-      VALUES (?, ?, ?, ?, ?, ?, 0)
-    `);
-
-    for (const ev of events) {
-      const start = new Date(ev.start.dateTime || ev.start.date).getTime();
-      const end = new Date(ev.end.dateTime || ev.end.date).getTime();
-
-      stmt.run(
-          ev.id,
-          ev.organizer?.email || '',
-          start,
-          end,
-          ev.summary || '',
-          Date.now()
-      );
-
-      revStmt.run(uuidv4(), 'calendar_events', ev.id, 1, JSON.stringify(ev), Date.now());
-    }
   }
 }

@@ -50,4 +50,5 @@ export const calendar_events = sqliteTable('calendar_events', {
     end: integer('end').notNull(),
     summary: text('summary').notNull(),
     updated_at: integer('updated_at').notNull(),
+    raw: text('raw'),
 })

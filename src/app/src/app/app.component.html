@@ -83,7 +83,7 @@
           <mat-icon>account_circle</mat-icon>
         </button>
         <mat-menu #profileMenu="matMenu">
-          <button mat-menu-item routerLink="/profile">
+          <button mat-menu-item (click)="openUserProfile()">
             <mat-icon>person</mat-icon> Profile
           </button>
           <button mat-menu-item (click)="logout()">
