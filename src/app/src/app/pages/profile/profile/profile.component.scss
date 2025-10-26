@@ -1,36 +1,122 @@
-:host {
-  display: block;
+.profile {
+  color: #e7e7e7;
+  background: #111;
   padding: 24px;
-  background: #0d0d0d;
-  color: #eee;
-}
-
-.card {
-  width: 520px;
-  padding: 24px;
-  background: linear-gradient(180deg, #111, #0b0b0b);
   border-radius: 12px;
-  margin: 0 auto;
+  font-family: Inter, sans-serif;
+
+  .top {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+
+    .avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      margin-right: 16px;
+    }
+
+    .role {
+      opacity: 0.6;
+      font-size: 14px;
+    }
+  }
+
+  h3 {
+    margin-top: 18px;
+    font-weight: 600;
+    color: #60a5fa;
+  }
+
+  .status-line {
+    display: flex;
+    align-items: center;
+    margin: 6px 0;
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 8px;
+      background: #444;
+
+      &.on {
+        background: #22c55e;
+      }
+    }
+  }
+
+  .actions {
+    margin-top: 10px;
+
+    button {
+      background: #333;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      margin-right: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+
+      &:hover {
+        background: #444;
+      }
+
+      &.danger {
+        background: #7f1d1d;
+
+        &:hover {
+          background: #991b1b;
+        }
+      }
+    }
+  }
+
+  .timeline {
+    margin-top: 24px;
+
+    .bars {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+
+      .bar {
+        width: 20px;
+        height: 48px;
+        border-radius: 4px;
+        background: #222;
+        opacity: 0.3;
+        transition: 0.2s;
+
+        &.busy {
+          background: #ef4444;
+          opacity: 0.9;
+        }
+
+        &:hover {
+          transform: scale(1.1);
+        }
+      }
+    }
+  }
+
+  .upcoming {
+    margin-top: 22px;
+
+    .event {
+      margin-bottom: 6px;
+      font-size: 14px;
+      opacity: 0.8;
+
+      strong {
+        display: block;
+      }
+    }
+  }
 }
 
-.title {
-  margin: 0 0 16px 0;
-  font-weight: 600;
-}
-
-.full {
-  width: 100%;
-  margin-bottom: 12px;
-}
-
-.avatar-container {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 12px;
-}
-
-.avatar {
-  border-radius: 50%;
-  width: 96px;
-  height: 96px;
+.loading {
+  opacity: 0.5;
 }

@@ -10,6 +10,7 @@ import {FormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {AuthService} from '../../../services/auth.service';
 import {InviteUserDialogComponent} from '../../../components/invite-user-dialog/invite-user-dialog.component';
+import {ProfileComponent} from '../../profile/profile/profile.component';
 
 @Component({
   selector: 'app-users-page',
@@ -38,7 +39,7 @@ import {InviteUserDialogComponent} from '../../../components/invite-user-dialog/
     <!-- Email-->
     <ng-container matColumnDef="email">
       <th mat-header-cell *matHeaderCellDef>Email</th>
-      <td mat-cell *matCellDef="let u">{{ u.email }}</td>
+      <td mat-cell *matCellDef="let u" (click)="openUserProfile(u)">{{ u.email }}</td>
     </ng-container>
 
     <!-- Role -->
@@ -84,11 +85,18 @@ export class UsersPageComponent implements OnInit {
   authService = inject(AuthService);
   dialog = inject(MatDialog);
   snack = inject(MatSnackBar);
+  currentUser: any;
 
   users: any[] = [];
   columns = ['email', 'role', 'team', 'actions'];
 
   async ngOnInit() {
+    const session = await this.authService.restoreSession();
+
+    if (!session?.user) return;
+
+    this.currentUser = session.user;
+
     await this.refresh();
   }
 
@@ -138,5 +146,18 @@ export class UsersPageComponent implements OnInit {
       console.error(err);
       this.snack.open('Failed to remove user: ' + (err.message ?? err), 'Close', { duration: 4000 });
     }
+  }
+
+  openUserProfile(user: any) {
+    const ref = this.dialog.open(ProfileComponent, {
+      width: '500px',
+      data: { user: user, currentUserId: this.currentUser.id }
+    });
+
+    ref.afterClosed().subscribe((result) => {
+      if (result) {
+        // refresh
+      }
+    });
   }
 }

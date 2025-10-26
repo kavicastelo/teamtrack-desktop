@@ -137,7 +137,8 @@ export class DatabaseService {
                                                    start INTEGER,
                                                    end INTEGER,
                                                    summary TEXT,
-                                                   updated_at INTEGER
+                                                   updated_at INTEGER,
+                                                   raw TEXT
       );
 
       CREATE TABLE IF NOT EXISTS revisions (
@@ -527,12 +528,21 @@ export class DatabaseService {
 
     stmt.run(ev.id, ownerUserId, ev.organizer?.email || ev.organizer?.displayName || '', start, end, ev.summary || '', Date.now());
 
-    // add a revision row for sync-to-remote (if you use revisions to push to supabase)
+    const payload = {
+      id: ev.id,
+      user_id: ownerUserId,
+      calendar_id: ev.organizer?.email || ev.organizer?.displayName || '',
+      start,
+      end,
+      summary: ev.summary || '',
+      updated_at: Date.now(),
+      raw: ev
+    };
     const revStmt = this.db.prepare(`
     INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
     VALUES (?, ?, ?, ?, ?, ?, 0)
   `);
-    revStmt.run(uuidv4(), 'calendar_events', ev.id, 1, JSON.stringify(ev), Date.now());
+    revStmt.run(uuidv4(), 'calendar_events', ev.id, 1, JSON.stringify(payload), Date.now());
   }
 
   async deleteEventLocal(eventId: string) {
