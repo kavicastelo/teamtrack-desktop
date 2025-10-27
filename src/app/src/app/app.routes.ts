@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/tasks', pathMatch: 'full' },
+  { path: 'dashboard', loadComponent: () => import('./pages/dashboard/dashboard/dashboard.component').then(m => m.DashboardComponent) },
   { path: 'tasks', loadComponent: () => import('./pages/kanban/task-board/task-board.component').then(m => m.TaskBoardComponent) },
   { path: 'team', loadComponent: () => import('./pages/teams/team-list/team-list.component').then(m => m.TeamListComponent) },
   { path: 'users', loadComponent: () => import('./pages/teams/users-page/users-page.component').then(m => m.UsersPageComponent) },

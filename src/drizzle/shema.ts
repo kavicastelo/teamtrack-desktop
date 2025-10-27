@@ -2,6 +2,7 @@ import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const attachments = sqliteTable('attachments', {
     id: text('id').primaryKey(),
+    uploaded_by: text('uploaded_by'),
     taskId: text('taskId').notNull(),
     filename: text('filename').notNull(),
     mimetype: text('mimetype').notNull(),
@@ -40,6 +41,7 @@ export const users = sqliteTable('users', {
     invited_at: integer('invited_at').notNull().default(0),
     google_refresh_token: text('google_refresh_token').notNull().default(''),
     last_calendar_sync: integer('last_calendar_sync').notNull().default(0),
+    weekly_capacity_hours: integer('weekly_capacity_hours').notNull().default(0)
 })
 
 export const calendar_events = sqliteTable('calendar_events', {
