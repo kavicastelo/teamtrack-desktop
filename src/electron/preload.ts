@@ -25,6 +25,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
         createEvent: (payload: any) => ipcRenderer.invoke('google-calendar:create-event', payload),
         deleteEvent: (payload: any) => ipcRenderer.invoke('google-calendar:delete-event', payload),
     },
+    metrics: {
+        getMyWork: (userId: string) => ipcRenderer.invoke('metrics:getMyWork', userId),
+        getTeamPulse: (teamId: string) => ipcRenderer.invoke('metrics:getTeamPulse', teamId),
+        getActivityTimeline: (limit?: number) => ipcRenderer.invoke('metrics:getActivityTimeline', limit),
+        getProjectHeatmap: (days?: number) => ipcRenderer.invoke('metrics:getProjectHeatmap', days),
+    },
     createTask: (payload: any) => ipcRenderer.invoke("task:create", payload),
     updateTask: (payload: any) => ipcRenderer.invoke("task:update", payload),
     deleteTask: (id: string) => ipcRenderer.invoke("task:delete", id),

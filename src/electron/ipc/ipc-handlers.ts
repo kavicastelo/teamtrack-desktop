@@ -5,6 +5,7 @@ import type { AuthService } from "../services/auth.service";
 import type { HeartbeatService } from "../../node/heartbeat.service";
 import {registerGoogleCalendarIPC} from "./google-calendar-ipc";
 import {GoogleCalendarSyncService} from "../../node/google-calendar-sync.service";
+import {registerMetricsIPC} from "./metrics-ipc";
 
 export function registerIPCHandlers(services: {
     dbService: DatabaseService;
@@ -169,4 +170,7 @@ export function registerIPCHandlers(services: {
 
     /** Google Calendar **/
     registerGoogleCalendarIPC(authService, dbService, calendarSync);
+
+    /** Metrics **/
+    registerMetricsIPC(dbService);
 }
