@@ -148,11 +148,15 @@ export class AppComponent implements OnInit, OnDestroy {
   // AUTH
   // ────────────────────────────────
   private async initAuth() {
-    await this.auth.restoreSession().then(async (r) => {
-      this.userProfile = r;
-      if (!r && !window.location.href.includes('auth/callback')) {
-        await this.router.navigate(['/auth/login']);
-      }
+    this.auth.init().then(async (session) => {
+      this.auth.setUser(session).then(async (r) => {
+        r.subscribe(async (r) => {
+          this.userProfile = r;
+          if (!r && !window.location.href.includes('auth/callback')) {
+            await this.router.navigate(['/auth/login']);
+          }
+        });
+      });
     });
   }
 

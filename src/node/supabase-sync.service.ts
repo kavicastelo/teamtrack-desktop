@@ -840,7 +840,7 @@ export class SupabaseSyncService extends EventEmitter {
     }
 
     /** Upload a new attachment */
-    async createAttachment(taskId: string) {
+    async createAttachment(taskId: string, uploaded_by: string) {
         const win = BrowserWindow.getFocusedWindow();
         const result = await dialog.showOpenDialog(win!, {properties: ["openFile"]});
         if (result.canceled || result.filePaths.length === 0) return null;
@@ -856,6 +856,7 @@ export class SupabaseSyncService extends EventEmitter {
         const created_at = Date.now();
         const newAttachment = {
             id: uuidv4(),
+            uploaded_by,
             taskId,
             filename: fileName,
             mimetype: "application/octet-stream",

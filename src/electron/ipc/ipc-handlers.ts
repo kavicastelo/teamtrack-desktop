@@ -82,8 +82,8 @@ export function registerIPCHandlers(services: {
     });
 
     /** Attachments */
-    ipcMain.handle("upload-attachment", async (_, taskId: string) => {
-        const attachment = await syncService.createAttachment(taskId);
+    ipcMain.handle("upload-attachment", async (_, payload) => {
+        const attachment = await syncService.createAttachment(payload.taskId, payload.uploaded_by);
         await dbService.logEvent({
             action: "attachment:create",
             object_type: "attachment",

@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import {BehaviorSubject, Observable} from 'rxjs';
 
 declare global {
   interface Window {
@@ -10,13 +11,31 @@ declare global {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   user = signal<any | null>(null);
+  private sessionSubject = new BehaviorSubject<any>(null);
+  session$ = this.sessionSubject.asObservable();
+  private userSubject = new BehaviorSubject<any>(null);
+  user$ = this.userSubject.asObservable();
 
-  async init() {
-    const session = await window.electronAPI.auth.restoreSession();
-    if (session) {
-      const user = await window.electronAPI.auth.getUser();
-      this.user.set(user);
+  async init(): Promise<Observable<any>> {
+    const currentSession = this.sessionSubject.getValue();
+    if (!currentSession) {
+      await window.electronAPI.auth.restoreSession().then((session: any) => {
+        this.sessionSubject.next(session);
+      });
     }
+    return this.session$;
+  }
+
+  async setUser(session: any): Promise<Observable<any>> {
+    if (session) {
+      if (!this.user()) {  // Check if user is already set
+        await window.electronAPI.auth.getUser().then((user: any) => {
+          this.userSubject.next(user);  // Update BehaviorSubject if you are using it
+          this.user.set(user);  // Update signal if you are using it
+        });
+      }
+    }
+    return this.user$;
   }
 
   async signIn(email: string) {

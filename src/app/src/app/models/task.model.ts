@@ -7,4 +7,6 @@ export interface Task {
   assignee?: string;
   updated_at?: number; // epoch ms
   created_at?: number;
+  due_date?: number|any;
+  priority?: number;
 }

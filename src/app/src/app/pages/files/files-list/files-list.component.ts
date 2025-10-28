@@ -9,6 +9,7 @@ import {MatRipple} from '@angular/material/core';
 import {TruncateFilenamePipe} from '../../../components/pipes/TruncateFilenamePipe';
 import {MatProgressBar} from '@angular/material/progress-bar';
 import {FileSizePipe} from '../../../components/pipes/FileSizePipe';
+import {AuthService} from '../../../services/auth.service';
 
 @Component({
   selector: 'app-files-list',
@@ -31,6 +32,7 @@ import {FileSizePipe} from '../../../components/pipes/FileSizePipe';
 })
 export class FilesListComponent implements OnInit {
   private ipc = inject(IpcService);
+  private auth = inject(AuthService);
   files: any[] = [];
 
   uploading = false;
@@ -38,8 +40,12 @@ export class FilesListComponent implements OnInit {
   uploadFileName: string | null = null;
   error: string | null = null;
 
+  currentUserId: any
+
   async ngOnInit() {
     await this.loadFiles();
+    const user = this.auth.user()
+    this.currentUserId = user?.user?.id
   }
 
   async loadFiles() {
@@ -63,7 +69,11 @@ export class FilesListComponent implements OnInit {
         else if (this.uploadProgress < 95) this.uploadProgress += Math.random() * 10;
       }, 300);
 
-      const newFile = await this.ipc.uploadAttachment('ALL_ACCESSIBLE');
+      const payload = {
+        taskId: 'ALL_ACCESSIBLE',
+        uploaded_by: this.currentUserId,
+      }
+      const newFile = await this.ipc.uploadAttachment(payload);
       clearInterval(progressInterval);
 
       this.uploadProgress = 100;
@@ -88,7 +98,7 @@ export class FilesListComponent implements OnInit {
   async openFile(file: any) {
     const payload = {
       supabasePath: file.supabase_path,
-      userId: "user", //todo: add user id
+      userId: this.currentUserId,
       id: file.id
     }
     await this.ipc.openAttachment(payload);
@@ -97,7 +107,7 @@ export class FilesListComponent implements OnInit {
   async downloadFile(file: any) {
     const payload = {
       supabasePath: file.supabase_path,
-      userId: "user", //todo: add user id
+      userId: this.currentUserId,
       id: file.id
     }
     await this.ipc.downloadAttachment(payload);

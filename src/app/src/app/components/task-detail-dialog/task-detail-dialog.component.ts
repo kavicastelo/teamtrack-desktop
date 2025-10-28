@@ -10,15 +10,17 @@ import {
 import {Task} from '../../models/task.model';
 import {MatFormField, MatLabel} from '@angular/material/form-field';
 import {MatOption, MatSelect} from '@angular/material/select';
-import {MatInput} from '@angular/material/input';
+import {MatHint, MatInput} from '@angular/material/input';
 import {FormsModule} from '@angular/forms';
 import {DatePipe, DecimalPipe, NgForOf, NgIf} from '@angular/common';
 import {MatButton} from '@angular/material/button';
 import {MatIcon} from '@angular/material/icon';
 import {MatProgressBar} from '@angular/material/progress-bar';
-import {TruncatePipe} from '../pipes/TruncatePipe';
 import {TruncateFilenamePipe} from '../pipes/TruncateFilenamePipe';
 import {FileSizePipe} from '../pipes/FileSizePipe';
+import {MatDatepicker, MatDatepickerInput, MatDatepickerToggle} from '@angular/material/datepicker';
+import {AuthService} from '../../services/auth.service';
+import {tap} from 'rxjs';
 
 @Component({
   selector: 'app-task-detail-dialog',
@@ -40,7 +42,11 @@ import {FileSizePipe} from '../pipes/FileSizePipe';
     DecimalPipe,
     MatProgressBar,
     TruncateFilenamePipe,
-    FileSizePipe
+    FileSizePipe,
+    MatDatepicker,
+    MatDatepickerToggle,
+    MatDatepickerInput,
+    MatHint
   ],
   templateUrl: './task-detail-dialog.component.html',
   styleUrl: './task-detail-dialog.component.scss',
@@ -58,21 +64,43 @@ export class TaskDetailDialogComponent implements OnInit {
   uploadProgress: number | null = null;
   uploadFileName: string | null = null;
 
+  priorityOptions = [
+    { value: 3, viewValue: 'Low' },
+    { value: 2, viewValue: 'Medium' },
+    { value: 1, viewValue: 'High' },
+  ];
+
+  currentUserId: any;
+
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: { task: Task },
     private dialogRef: MatDialogRef<TaskDetailDialogComponent>,
-    private ipc: IpcService
+    private ipc: IpcService,
+    private auth: AuthService
   ) {
     this.task = { ...data.task };
+    if (this.task.due_date) {
+      this.task.due_date = new Date(this.task.due_date);
+    }
   }
 
   async ngOnInit() {
     this.attachments = await this.ipc.listAttachments(this.task.id);
+    const user = this.auth.user()
+    this.currentUserId = user?.user?.id
   }
 
   async save() {
     this.saving = true;
     try {
+      const daysToAdd = 7;
+      this.task.due_date = this.task.due_date
+        ? new Date(this.task.due_date).getTime()
+        : (() => {
+          const currentDate = new Date();
+          currentDate.setDate(currentDate.getDate() + daysToAdd);
+          return currentDate.getTime();
+        })();
       const updated = await this.ipc.updateTask(this.task);
       this.dialogRef.close(updated);
     } catch (e) {
@@ -109,7 +137,11 @@ export class TaskDetailDialogComponent implements OnInit {
         else if (this.uploadProgress < 95) this.uploadProgress += Math.random() * 10;
       }, 300);
 
-      const newFile = await this.ipc.uploadAttachment(this.task.id);
+      const payload = {
+        taskId: this.task.id,
+        uploaded_by: this.currentUserId,
+      }
+      const newFile = await this.ipc.uploadAttachment(payload);
       clearInterval(progressInterval);
 
       this.uploadProgress = 100;
