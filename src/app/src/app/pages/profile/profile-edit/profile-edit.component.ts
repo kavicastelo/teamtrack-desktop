@@ -60,20 +60,21 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
       timezone: [''],
       calendar_sync_enabled: [false],
       google_calendar_id: [''],
-      available_times: ['']
+      available_times: [''],
+      weekly_capacity_hours: [0, [Validators.min(0), Validators.max(168)]],
     });
   }
 
   async ngOnInit() {
-    const session = await this.auth.restoreSession();
+    await this.auth.user$.subscribe(async (s) => {
+      if (!s?.user) return;
 
-    if (!session?.user) return;
-
-    this.user = session.user;
-    this.patchProfile(session.user);
+      this.user = s.user;
+      this.patchProfile(s.user);
+    });
 
     // Optionally load saved availability from supabase
-    await this.loadRemoteProfile();
+    // await this.loadRemoteProfile();
 
     await this.loadCalendarStatus();
 
@@ -91,7 +92,8 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
     this.profileForm.patchValue({
       email: user.email,
       full_name: user.user_metadata?.full_name || '',
-      timezone: user.user_metadata?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+      timezone: user.user_metadata?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+      weekly_capacity_hours: user.user_metadata?.weekly_capacity_hours || 0
     });
   }
 
@@ -110,8 +112,8 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
       id: this.user.id,
       email: this.user.email,
       avatar_url: this.avatarUrl,
-      calendar_sync_enabled: this.profileForm.value.calendar_sync_enabled ? 1 : 0,
       ...this.profileForm.getRawValue(),
+      calendar_sync_enabled: this.profileForm.value.calendar_sync_enabled ? 1 : 0,
     };
 
     try {

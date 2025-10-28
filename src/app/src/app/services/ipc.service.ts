@@ -82,8 +82,8 @@ export class IpcService {
     return window.electronAPI.onPullUpdate(cb);
   }
 
-  async uploadAttachment(taskId: string) {
-    return window.electronAPI.uploadAttachment(taskId);
+  async uploadAttachment(payload: any) {
+    return window.electronAPI.uploadAttachment(payload);
   }
   async listAttachments(taskId?: string|null) {
     return window.electronAPI.listAttachments(taskId);

@@ -3,6 +3,7 @@ import {MatCard, MatCardContent, MatCardTitle} from '@angular/material/card';
 import {DatePipe, NgForOf, NgIf} from '@angular/common';
 import {DashboardService} from '../../services/dashboard.service';
 import {MatRipple} from '@angular/material/core';
+import {AuthService} from '../../services/auth.service';
 
 @Component({
   selector: 'app-my-work-widget',
@@ -135,9 +136,11 @@ import {MatRipple} from '@angular/material/core';
 })
 export class MyWorkWidgetComponent implements OnInit {
   data: any;
-  constructor(private svc: DashboardService) {}
+  constructor(private svc: DashboardService, private auth: AuthService) {}
   async ngOnInit() {
-    const userId = await window.electronAPI.auth.getUser()?.id;
-    this.data = await this.svc.getMyWork(userId);
+    this.auth.user$.subscribe(async (user) => {
+      const userId = user?.user?.id;
+      this.data = await this.svc.getMyWork(userId);
+    });
   }
 }

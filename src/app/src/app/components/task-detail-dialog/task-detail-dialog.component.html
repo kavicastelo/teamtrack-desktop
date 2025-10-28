@@ -23,6 +23,21 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline">
+      <mat-label>Due Date</mat-label>
+      <input matInput [matDatepicker]="picker" [(ngModel)]="task.due_date">
+      <mat-hint>MM/DD/YYYY</mat-hint>
+      <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+      <mat-datepicker #picker></mat-datepicker>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Priority</mat-label>
+      <mat-select [(ngModel)]="task.priority">
+        <mat-option *ngFor="let p of priorityOptions" [value]="p.value">{{p.viewValue}}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
       <mat-label>Assignee</mat-label>
       <input matInput [(ngModel)]="task.assignee" />
     </mat-form-field>

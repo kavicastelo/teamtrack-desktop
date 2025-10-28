@@ -91,13 +91,13 @@ export class UsersPageComponent implements OnInit {
   columns = ['email', 'role', 'team', 'actions'];
 
   async ngOnInit() {
-    const session = await this.authService.restoreSession();
+    await this.authService.user$.subscribe(async (s) => {
+      if (!s?.user) return;
 
-    if (!session?.user) return;
+      this.currentUser = s.user;
 
-    this.currentUser = session.user;
-
-    await this.refresh();
+      await this.refresh();
+    });
   }
 
   async refresh() {

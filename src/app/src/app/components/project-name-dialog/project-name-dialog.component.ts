@@ -4,6 +4,9 @@ import {FormsModule} from '@angular/forms';
 import {MatButton} from '@angular/material/button';
 import {MatInput} from '@angular/material/input';
 import {MatFormField, MatLabel} from '@angular/material/form-field';
+import {IpcService} from '../../services/ipc.service';
+import {NgForOf, NgIf} from '@angular/common';
+import {MatOption, MatSelect} from '@angular/material/select';
 
 @Component({
   selector: 'app-project-name-dialog',
@@ -17,7 +20,10 @@ import {MatFormField, MatLabel} from '@angular/material/form-field';
     MatButton,
     MatInput,
     MatFormField,
-    MatLabel
+    MatLabel,
+    MatOption,
+    MatSelect,
+    NgForOf
   ],
   template: `
     <h2 mat-dialog-title>New Project</h2>
@@ -25,6 +31,12 @@ import {MatFormField, MatLabel} from '@angular/material/form-field';
       <mat-form-field appearance="fill" style="width: 100%;">
         <mat-label>Project name</mat-label>
         <input matInput [(ngModel)]="name" placeholder="Enter name" />
+      </mat-form-field>
+      <mat-form-field appearance="fill" style="width: 100%;">
+        <mat-label>Assign Main Team</mat-label>
+        <mat-select [(ngModel)]="selectedTeam">
+          <mat-option *ngFor="let team of teams" [value]="team">{{ team.name }}</mat-option>
+        </mat-select>
       </mat-form-field>
       <mat-form-field appearance="fill" style="width: 100%;">
         <mat-label>Description</mat-label>
@@ -40,11 +52,17 @@ import {MatFormField, MatLabel} from '@angular/material/form-field';
 export class ProjectNameDialogComponent {
   name = '';
   description = '';
+  teams: any[] = [];
+  selectedTeam: any;
 
-  constructor(private dialogRef: MatDialogRef<ProjectNameDialogComponent>) {}
+  constructor(private dialogRef: MatDialogRef<ProjectNameDialogComponent>, private ipc: IpcService) {}
+
+  async ngOnInit() {
+    this.teams = await this.ipc.listTeams();
+  }
 
   confirm() {
-    this.dialogRef.close({ name: this.name.trim(), description: this.description.trim() });
+    this.dialogRef.close({ name: this.name.trim(), description: this.description.trim(), team_id: this.selectedTeam?.id });
   }
 
   cancel() {
