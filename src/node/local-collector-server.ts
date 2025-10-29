@@ -74,7 +74,6 @@ export class LocalCollectorServer extends EventEmitter {
             }
 
             const userId = parsedState.userId;
-            console.log(userId)
 
             try {
                 const tokenRes = await fetch("https://oauth2.googleapis.com/token", {

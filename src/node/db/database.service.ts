@@ -68,7 +68,8 @@ export class DatabaseService {
                                             description TEXT,
                                             owner_id TEXT,
                                             created_at INTEGER,
-                                            updated_at INTEGER
+                                            updated_at INTEGER,
+                                            team_id TEXT
       );
 
       CREATE TABLE IF NOT EXISTS teams (
@@ -101,7 +102,8 @@ export class DatabaseService {
                                          updated_at INTEGER,
                                          invited_at INTEGER,
                                          google_refresh_token TEXT,
-                                         last_calendar_sync INTEGER
+                                         last_calendar_sync INTEGER,
+                                         weekly_capacity_hours INTEGER
       );
 
       CREATE TABLE IF NOT EXISTS local_session (
@@ -117,7 +119,9 @@ export class DatabaseService {
         status TEXT,
         assignee TEXT,
         updated_at INTEGER,
-        created_at INTEGER
+        created_at INTEGER,
+        due_date INTEGER,
+        priority INTEGER
       );
 
       CREATE TABLE IF NOT EXISTS events (
@@ -154,6 +158,7 @@ export class DatabaseService {
 
       CREATE TABLE IF NOT EXISTS attachments (
         id TEXT PRIMARY KEY,
+        uploaded_by TEXT,
         taskId TEXT,
         filename TEXT,
         mimetype TEXT,
@@ -171,7 +176,19 @@ export class DatabaseService {
                                               platform TEXT,
                                               app TEXT,
                                               title TEXT,
-                                              metadata TEXT
+                                              metadata TEXT,
+                                              team_id TEXT,
+                                              last_seen INTEGER
+      );
+
+      CREATE TABLE IF NOT EXISTS time_entries (
+                                                id TEXT PRIMARY KEY,
+                                                user_id TEXT,
+                                                project_id TEXT,
+                                                task_id TEXT,
+                                                start_ts INTEGER,
+                                                duration_minutes INTEGER,
+                                                created_at INTEGER
       );
     `);
   }
@@ -212,8 +229,8 @@ export class DatabaseService {
     payload.updated_at = now;
     payload.created_at = now;
     this.db!.prepare(
-        `INSERT INTO tasks (id, project_id, title, description, status, assignee, updated_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO tasks (id, project_id, title, description, status, assignee, updated_at, created_at, due_date, priority)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
         id,
         payload.project_id || null,
@@ -222,7 +239,9 @@ export class DatabaseService {
         payload.status || "todo",
         payload.assignee || null,
         now,
-        now
+        now,
+        payload.due_date || null,
+        payload.priority || 1
     );
 
     // Add revision entry for sync
@@ -242,47 +261,126 @@ export class DatabaseService {
 
   updateTask(payload: any) {
     if (!payload.id) throw new Error("Missing task ID");
-    const now = Date.now();
-    payload.updated_at = now;
-    const title = payload.title || "Untitled Task";
-    payload.title = title;
-    const description = payload.description || "";
-    payload.description = description;
-    const status = payload.status || "todo";
-    payload.status = status;
-    const assignee = payload.assignee || null;
-    payload.assignee = assignee;
 
+    const existing: any = this.getTaskById(payload.id);
+    if (!existing) throw new Error("Task not found");
+
+    const now = Date.now();
+    const previousStatus = existing.status;
+    const newStatus = payload.status || existing.status;
+
+    payload.updated_at = now;
+
+    // --- TIME ENTRY HANDLING ---
+    // Start tracking when entering inprogress
+    if (previousStatus !== 'in-progress' && newStatus === 'in-progress') {
+      const timeEntryId = crypto.randomUUID();
+      const timePayload = {
+        id: timeEntryId,
+        user_id: payload.assignee || existing.assignee || null,
+        project_id: payload.project_id || existing.project_id || null,
+        task_id: payload.id,
+        start_ts: now,
+        duration_minutes: 0,
+        created_at: now,
+      };
+
+      this.db!.prepare(`
+      INSERT INTO time_entries (id, user_id, project_id, task_id, start_ts, duration_minutes, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+          timeEntryId,
+          timePayload.user_id,
+          timePayload.project_id,
+          timePayload.task_id,
+          timePayload.start_ts,
+          timePayload.duration_minutes,
+          timePayload.created_at
+      );
+
+      // Add revision for syncing
+      this.db!.prepare(`
+      INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+      VALUES (?, ?, ?, ?, ?, ?, 0)
+    `).run(
+          crypto.randomUUID(),
+          "time_entries",
+          timeEntryId,
+          now,
+          JSON.stringify(timePayload),
+          now
+      );
+    }
+
+    // Stop tracking when leaving in-progress
+    if (previousStatus === 'in-progress' && newStatus !== 'in-progress') {
+      const openEntry: any = this.db!.prepare(`
+      SELECT * FROM time_entries
+      WHERE task_id = ? AND duration_minutes = 0
+      ORDER BY start_ts DESC LIMIT 1
+    `).get(payload.id);
+
+      if (openEntry) {
+        const durationMinutes = Math.max(1, Math.round((now - openEntry.start_ts) / 60000));
+
+        this.db!.prepare(`
+        UPDATE time_entries SET duration_minutes = ? WHERE id = ?
+      `).run(durationMinutes, openEntry.id);
+
+        // Push update to revisions
+        const updatedEntry = { ...openEntry, duration_minutes: durationMinutes };
+        this.db!.prepare(`
+        INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+        VALUES (?, ?, ?, ?, ?, ?, 0)
+      `).run(
+            crypto.randomUUID(),
+            "time_entries",
+            openEntry.id,
+            now,
+            JSON.stringify(updatedEntry),
+            now
+        );
+      }
+    }
+
+    // --- TASK UPDATE LOGIC ---
     const stmt = this.db!.prepare(`
     UPDATE tasks
-    SET project_id = ?, title = ?, description = ?, status = ?, assignee = ?, updated_at = ?, created_at = ?
+    SET project_id = ?, title = ?, description = ?, status = ?, assignee = ?, updated_at = ?, created_at = ?, due_date = ?, priority = ?
     WHERE id = ?
   `);
+
     stmt.run(
-        payload.project_id || null,
-        title,
-        description || "",
-        status || "todo",
-        assignee || null,
+        payload.project_id || existing.project_id || null,
+        payload.title || existing.title,
+        payload.description || existing.description,
+        newStatus,
+        payload.assignee || existing.assignee || null,
         now,
-        payload.created_at,
+        payload.created_at || existing.created_at,
+        payload.due_date || existing.due_date,
+        payload.priority || existing.priority,
         payload.id
     );
 
-    // Insert revision for sync
-    this.db!.prepare(
-        `INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
-     VALUES (?, ?, ?, ?, ?, ?, 0)`
-    ).run(
+    // --- TASK REVISION ENTRY ---
+    this.db!.prepare(`
+    INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+    VALUES (?, ?, ?, ?, ?, ?, 0)
+  `).run(
         crypto.randomUUID(),
         "tasks",
         payload.id,
-        Date.now(),
+        now,
         JSON.stringify(payload),
         now
     );
 
     return { ...payload, updated_at: now };
+  }
+
+  getTaskById(id: string) {
+    return this.db!.prepare(`SELECT * FROM tasks WHERE id=?`).get(id);
   }
 
   deleteTask(taskId: string) {
@@ -328,9 +426,9 @@ export class DatabaseService {
     payload.updated_at = now;
     payload.created_at = now;
     this.db!.prepare(`
-    INSERT INTO projects (id, name, description, owner_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(id, payload.name, payload.description || '', payload.owner_id || null, now, now);
+    INSERT INTO projects (id, name, description, owner_id, created_at, updated_at, team_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(id, payload.name, payload.description || '', payload.owner_id || null, now, now, payload.team_id || null);
 
     this.db!.prepare(`
     INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
@@ -350,8 +448,8 @@ export class DatabaseService {
     if (!payload.id) throw new Error("Missing project ID");
     const now = Date.now();
     this.db!.prepare(`
-    UPDATE projects SET name=?, description=?, updated_at=? WHERE id=?
-  `).run(payload.name, payload.description || '', now, payload.id);
+    UPDATE projects SET name=?, description=?, team_id, updated_at=? WHERE id=?
+  `).run(payload.name, payload.description || '', payload.team_id || null, now, payload.id);
 
     this.db!.prepare(`
     INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
@@ -410,9 +508,9 @@ export class DatabaseService {
     payload.updated_at = now;
     payload.invited_at = now;
     this.db!.prepare(`
-    INSERT INTO users (id, email, full_name, role, avatar_url, timezone, calendar_sync_enabled, google_calendar_id, available_times, updated_at, invited_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, payload.email, '', payload.role, '', '', 0, '', '', now, now);
+    INSERT INTO users (id, email, full_name, role, avatar_url, timezone, calendar_sync_enabled, google_calendar_id, available_times, updated_at, invited_at, google_refresh_token, last_calendar_sync, weekly_capacity_hours)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, payload.email, '', payload.role, '', '', 0, '', '', now, now, '', null, 0);
 
     this.db!.prepare(`
     INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
@@ -459,8 +557,8 @@ export class DatabaseService {
   public updateUserProfile(payload: any) {
     const now = Date.now();
     this.db!.prepare(`
-      UPDATE users SET * WHERE id=?
-    `).run(payload, payload.id);
+      UPDATE users SET full_name=?, avatar_url=?, timezone=?, weekly_capacity_hours=?, google_calendar_id=?, calendar_sync_enabled=?, available_times=? WHERE id=?
+    `).run(payload.full_name, payload.avatar_url, payload.timezone, payload.weekly_capacity_hours, payload.google_calendar_id, payload.calendar_sync_enabled, payload.available_times, payload.id);
     return { ...payload, updated_at: now };
   }
 
