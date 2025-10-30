@@ -13,6 +13,7 @@ import {Task} from '../../../models/task.model';
 import {MatButton} from '@angular/material/button';
 import {MatDialog} from '@angular/material/dialog';
 import {TaskDetailDialogComponent} from '../../../components/task-detail-dialog/task-detail-dialog.component';
+import {AuthService} from '../../../services/auth.service';
 
 @Component({
   selector: 'app-task-board',
@@ -45,7 +46,9 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   // unsubscribe function returned by preload's onRemoteUpdate
   private unsubRemote: (() => void) | null = null;
 
-  constructor(private ipc: IpcService, private dialog: MatDialog) {}
+  users: any[] = [];
+
+  constructor(private ipc: IpcService, private auth: AuthService, private dialog: MatDialog) {}
 
   ngOnInit(): void {
     this.loadTasks().then();
@@ -61,6 +64,8 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
         console.warn('remote update apply failed', err);
       }
     });
+
+    this.loadAllUsers().then();
   }
 
   ngOnDestroy(): void {
@@ -185,5 +190,13 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
         this.applyRemoteTask(result); // refresh the changed task
       }
     });
+  }
+
+  async loadAllUsers() {
+    this.users = await this.auth.listUsers();
+  }
+
+  loadAssignee(assignee: string): string {
+    return this.users.find(u => u.id === assignee)?.full_name || this.users.find(u => u.id === assignee)?.email || assignee;
   }
 }

@@ -39,7 +39,11 @@
 
     <mat-form-field appearance="outline">
       <mat-label>Assignee</mat-label>
-      <input matInput [(ngModel)]="task.assignee" />
+      <mat-select [(ngModel)]="task.assignee">
+        <mat-option *ngFor="let u of users" [value]="u.id">
+          {{ u.full_name || u.email }}
+        </mat-option>
+      </mat-select>
     </mat-form-field>
 
     <div class="meta">

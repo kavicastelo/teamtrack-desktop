@@ -33,7 +33,7 @@
         <div *ngFor="let t of col.tasks" cdkDrag class="task-card" (click)="openTaskDetail(t)">
           <div class="title">{{ t.title }}</div>
           <div class="meta">
-            <small *ngIf="t.assignee">👤 {{ t.assignee }}</small>
+            <small *ngIf="t.assignee">👤 {{ loadAssignee(t.assignee) }}</small>
             <small>{{ formatDate(t.updated_at) }}</small>
           </div>
         </div>

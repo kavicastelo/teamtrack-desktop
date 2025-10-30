@@ -72,6 +72,8 @@ export class TaskDetailDialogComponent implements OnInit {
 
   currentUserId: any;
 
+  users: any[] = [];
+
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: { task: Task },
     private dialogRef: MatDialogRef<TaskDetailDialogComponent>,
@@ -88,6 +90,7 @@ export class TaskDetailDialogComponent implements OnInit {
     this.attachments = await this.ipc.listAttachments(this.task.id);
     const user = this.auth.user()
     this.currentUserId = user?.user?.id
+    await this.loadAllUsers();
   }
 
   async save() {
@@ -170,6 +173,10 @@ export class TaskDetailDialogComponent implements OnInit {
       id: att.id
     }
     await this.ipc.downloadAttachment(payload);
+  }
+
+  async loadAllUsers() {
+    this.users = await this.auth.listUsers();
   }
 
   cancel() {

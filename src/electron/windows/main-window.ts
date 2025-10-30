@@ -1,5 +1,11 @@
-import { BrowserWindow } from "electron";
+import {app, BrowserWindow} from "electron";
 import path from "path";
+import dotenv from "dotenv";
+
+const envPath = app.isPackaged
+    ? path.join(process.resourcesPath, "app.asar.unpacked", ".env")
+    : path.join(process.cwd(), ".env");
+dotenv.config({ path: envPath });
 
 let mainWindow: BrowserWindow | null = null;
 
