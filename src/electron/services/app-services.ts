@@ -12,6 +12,13 @@ import { IdleMonitorService } from "../../node/idle-monitor.service";
 import { ActiveWindowDetectorService } from "../../node/active-window-detector";
 import {GoogleCalendarSyncService} from "../../node/google-calendar-sync.service";
 
+import dotenv from "dotenv";
+
+const envPath = app.isPackaged
+    ? path.join(process.resourcesPath, "app.asar.unpacked", ".env")
+    : path.join(process.cwd(), ".env");
+dotenv.config({ path: envPath });
+
 let dbService: DatabaseService;
 let syncService: SupabaseSyncService;
 let authService: AuthService;

@@ -1,10 +1,18 @@
-import {ipcMain, shell} from 'electron';
+import {app, ipcMain, shell} from 'electron';
 import {AuthService} from '../services/auth.service.js';
 import {DatabaseService} from '../../node/db/database.service.js';
 import {GoogleCalendarSyncService} from '../../node/google-calendar-sync.service.js';
 import {calendar_events, users} from "../../drizzle/shema";
 import {asc, eq} from "drizzle-orm";
 import crypto from "crypto";
+
+import dotenv from "dotenv";
+import path from "path";
+
+const envPath = app.isPackaged
+    ? path.join(process.resourcesPath, "app.asar.unpacked", ".env")
+    : path.join(process.cwd(), ".env");
+dotenv.config({ path: envPath });
 
 export function registerGoogleCalendarIPC(authService: AuthService, dbService: DatabaseService, calendarSync: GoogleCalendarSyncService) {
     ipcMain.handle("google-calendar:connect", async (_, userId: string | null) => {

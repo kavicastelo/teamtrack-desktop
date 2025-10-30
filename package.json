@@ -11,10 +11,47 @@
     "postinstall": "cd src/app && npm install",
     "build:electron": "tsc -p tsconfig.electron.json",
     "electron:start": "npm run build:electron && electron dist/electron/main.js",
-    "electron:dev": "tsc -p tsconfig.electron.json --watch & electron dist/electron/main.js"
+    "electron:dev": "tsc -p tsconfig.electron.json --watch & electron dist/electron/main.js",
+    "pack": "npm run build:angular && npm run build:electron && electron-builder --dir",
+    "dist": "npm run build:angular && npm run build:electron && electron-builder"
   },
   "build": {
-    "asar": true
+    "appId": "com.teamtrack.desktop",
+    "productName": "TeamTrack Desktop",
+    "copyright": "Copyright © 2025",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "dist/electron/**/*",
+      "dist/drizzle/**/*",
+      "dist/node/**/*",
+      "src/app/dist/**/*",
+      ".env",
+      "!**/*.ts",
+      "!src/**"
+    ],
+    "compression": "maximum",
+    "asar": {
+      "smartUnpack": true
+    },
+    "asarUnpack": [".env"],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "src/assets/icons/app.ico"
+    },
+    "mac": {
+      "category": "public.app-category.utilities",
+      "icon": "src/assets/icons/app.icns"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    }
   },
   "keywords": [],
   "author": "",
