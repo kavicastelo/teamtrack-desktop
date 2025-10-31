@@ -91,6 +91,18 @@ export class AuthService extends EventEmitter {
             this.session = session;
             await this.saveSessionLocally(session);
 
+            const userId = session.user?.id;
+            if (userId) {
+                const now = Date.now();
+                this.dbService.createUser({
+                    id: userId,
+                    email: session.user.email,
+                    role: 'member',
+                    invited_at: now,
+                    updated_at: now
+                });
+            }
+
             return {
                 session,
                 user: session.user,
