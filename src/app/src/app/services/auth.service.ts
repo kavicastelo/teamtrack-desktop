@@ -15,13 +15,18 @@ export class AuthService {
   session$ = this.sessionSubject.asObservable();
   private userSubject = new BehaviorSubject<any>(null);
   user$ = this.userSubject.asObservable();
+  private userIdSubject = new BehaviorSubject<any>(null);
+  userId$ = this.userIdSubject.asObservable();
 
   async init(): Promise<Observable<any>> {
     const currentSession = this.sessionSubject.getValue();
     if (!currentSession) {
       await window.electronAPI.auth.restoreSession().then((session: any) => {
         this.sessionSubject.next(session);
+        this.setUserId(session.user.id)
       });
+    } else {
+      await this.setUserId(currentSession.user.id);
     }
     return this.session$;
   }
@@ -36,6 +41,17 @@ export class AuthService {
       }
     }
     return this.user$;
+  }
+
+  async setUserId(userId: string): Promise<Observable<any>> {
+    const currentUserId = this.userIdSubject.getValue();
+    if (!currentUserId) {
+      await window.electronAPI.auth.setUserId(userId).then(()=>{
+        this.userIdSubject.next(userId);
+        this.userId$ = this.userIdSubject.asObservable();
+      });
+    }
+    return this.userId$;
   }
 
   async signIn(email: string) {

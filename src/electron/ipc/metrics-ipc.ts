@@ -98,6 +98,33 @@ export function registerMetricsIPC(dbService: DatabaseService) {
         return merged;
     });
 
+    ipcMain.handle('metrics:getActivityByUser', async (_e, userId: string, limit = 100) => {
+        const events = dbService.query(`
+      SELECT 'event' as kind, id, actor, action, object_type, object_id, payload, created_at as ts
+      FROM events
+      WHERE actor = ?
+    `, [userId]) as any[];
+
+        const revisions = dbService.query(`
+      SELECT 'revision' as kind, id, origin_id as actor, NULL as action, object_type, object_id, payload, created_at as ts
+      FROM revisions
+      WHERE origin_id = ?
+    `, [userId]) as any[];
+
+        const attachments = dbService.query(`
+      SELECT 'attachment' as kind, id, uploaded_by as actor,
+             'upload' as action, 'attachment' as object_type,
+             taskId as object_id, filename as payload, created_at as ts
+      FROM attachments
+      WHERE uploaded_by = ?
+    `, [userId]) as any[];
+
+        const merged = [...events, ...revisions, ...attachments]
+            .sort((a, b) => b.ts - a.ts)
+            .slice(0, limit);
+
+        return merged;
+    });
 
     ipcMain.handle('metrics:getProjectHeatmap', async (_e, timeframeDays = 30) => {
         const since = Date.now() - timeframeDays * 24 * 60 * 60 * 1000;

@@ -6,6 +6,8 @@ import type { Session } from '@supabase/supabase-js';
 import {localSession, users} from "../../drizzle/shema";
 import {eq} from "drizzle-orm";
 import Utf8 from "crypto-js/enc-utf8";
+const Store = require('electron-store');
+const store = new Store();
 
 export class AuthService extends EventEmitter {
     private readonly supabase: SupabaseClient; // client with anon key for auth flows (current)
@@ -101,6 +103,7 @@ export class AuthService extends EventEmitter {
                     invited_at: now,
                     updated_at: now
                 });
+                store.set('currentUserId', userId);
             }
 
             return {

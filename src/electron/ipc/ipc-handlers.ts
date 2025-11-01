@@ -6,6 +6,8 @@ import type { HeartbeatService } from "../../node/heartbeat.service";
 import {registerGoogleCalendarIPC} from "./google-calendar-ipc";
 import {GoogleCalendarSyncService} from "../../node/google-calendar-sync.service";
 import {registerMetricsIPC} from "./metrics-ipc";
+const Store = require('electron-store');
+const store = new Store();
 
 export function registerIPCHandlers(services: {
     dbService: DatabaseService;
@@ -15,6 +17,7 @@ export function registerIPCHandlers(services: {
     calendarSync: GoogleCalendarSyncService;
 }) {
     const { dbService, syncService, authService, heartbeatService, calendarSync  } = services;
+    const currentUserId = store.get('currentUserId');
 
     /** Authentication */
     ipcMain.handle("auth:signInEmail", (_, email) => authService.signIn(email));
@@ -28,6 +31,9 @@ export function registerIPCHandlers(services: {
     ipcMain.handle("auth:signOut", () => authService.signOut());
 
     /** Users **/
+    ipcMain.handle('auth:set-user-id', (event, id) => {
+        store.set('currentUserId', id);
+    });
     ipcMain.handle("auth:getUser", (_, userId?: string) =>
         userId ? authService.getUserById(userId) : authService.getCurrentUser()
     );
@@ -51,8 +57,10 @@ export function registerIPCHandlers(services: {
     /** Tasks */
     ipcMain.handle("task:list", (_e, projectId) => dbService.listTasks(projectId));
     ipcMain.handle("task:create", async (_e, payload) => {
+        console.log(currentUserId)
         const task = dbService.createTask(payload);
         await dbService.logEvent({
+            actor: currentUserId,
             action: "task:create",
             object_type: "task",
             object_id: task.id,
@@ -63,6 +71,7 @@ export function registerIPCHandlers(services: {
     ipcMain.handle("task:update", async (_e, payload) => {
         const task = dbService.updateTask(payload);
         await dbService.logEvent({
+            actor: currentUserId,
             action: "task:update",
             object_type: "task",
             object_id: task.id,
@@ -73,6 +82,7 @@ export function registerIPCHandlers(services: {
     ipcMain.handle("task:delete", async (_e, taskId: string) => {
         const taskDeleted = dbService.deleteTask(taskId);
         await dbService.logEvent({
+            actor: currentUserId,
             action: "task:delete",
             object_type: "task",
             object_id: taskId,
@@ -85,6 +95,7 @@ export function registerIPCHandlers(services: {
     ipcMain.handle("upload-attachment", async (_, payload) => {
         const attachment = await syncService.createAttachment(payload.taskId, payload.uploaded_by);
         await dbService.logEvent({
+            actor: currentUserId,
             action: "attachment:create",
             object_type: "attachment",
             object_id: attachment.id,
@@ -95,7 +106,7 @@ export function registerIPCHandlers(services: {
     ipcMain.handle('download-attachment', async (_, payload: any) => {
         const attachment = await syncService.downloadAttachment(payload.supabasePath);
         await dbService.logEvent({
-            actor: payload.userId,
+            actor: payload.userId || currentUserId,
             action: "attachment:download",
             object_type: "attachment",
             object_id: payload.id || 'ATTACHMENT',
@@ -106,7 +117,7 @@ export function registerIPCHandlers(services: {
     ipcMain.handle('open-attachment', async (_, payload: any) => {
         const attachment = await syncService.openAttachment(payload.supabasePath);
         await dbService.logEvent({
-            actor: payload.userId,
+            actor: payload.userId || currentUserId,
             action: "attachment:open",
             object_type: "attachment",
             object_id: payload.id || 'ATTACHMENT',
@@ -120,6 +131,7 @@ export function registerIPCHandlers(services: {
     ipcMain.handle("db:createProject", async (_, payload) => {
         const project = dbService.createProject(payload);
         await dbService.logEvent({
+            actor: currentUserId,
             action: "project:create",
             object_type: "project",
             object_id: project.id,
@@ -131,6 +143,7 @@ export function registerIPCHandlers(services: {
     ipcMain.handle("db:updateProject", async (_, payload) => {
         const project = dbService.updateProject(payload);
         await dbService.logEvent({
+            actor: currentUserId,
             action: "project:update",
             object_type: "project",
             object_id: project.id,
@@ -143,6 +156,7 @@ export function registerIPCHandlers(services: {
     ipcMain.handle("db:createTeam", async (_, payload) => {
         const team = dbService.createTeam(payload);
         await dbService.logEvent({
+            actor: currentUserId,
             action: "team:create",
             object_type: "team",
             object_id: team.id,
@@ -154,6 +168,7 @@ export function registerIPCHandlers(services: {
     ipcMain.handle("db:updateTeam", async (_, payload) => {
         const team = dbService.updateTeam(payload);
         await dbService.logEvent({
+            actor: currentUserId,
             action: "team:update",
             object_type: "team",
             object_id: team.id,
