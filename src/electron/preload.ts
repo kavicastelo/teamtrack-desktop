@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from "electron";
 contextBridge.exposeInMainWorld("electronAPI", {
     onDeepLink: (callback: (url: string) => void) => ipcRenderer.on('deep-link', (_, url) => callback(url)),
     auth: {
+        setUserId: (userId: string) => ipcRenderer.invoke('auth:set-user-id', userId),
         signInEmail: (email: string) => ipcRenderer.invoke('auth:signInEmail', email),
         signInGoogle: () => ipcRenderer.invoke('auth:signInGoogle'),
         handleCallback: (url: string) => ipcRenderer.invoke('auth:handleCallback', url),
@@ -29,6 +30,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
         getMyWork: (userId: string) => ipcRenderer.invoke('metrics:getMyWork', userId),
         getTeamPulse: (teamId: string) => ipcRenderer.invoke('metrics:getTeamPulse', teamId),
         getActivityTimeline: (limit?: number) => ipcRenderer.invoke('metrics:getActivityTimeline', limit),
+        getActivityTimeByUser: (userId?: string, limit?: number) => ipcRenderer.invoke('metrics:getActivityByUser', userId, limit),
         getProjectHeatmap: (days?: number) => ipcRenderer.invoke('metrics:getProjectHeatmap', days),
     },
     createTask: (payload: any) => ipcRenderer.invoke("task:create", payload),

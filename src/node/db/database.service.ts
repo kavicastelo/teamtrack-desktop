@@ -507,17 +507,29 @@ export class DatabaseService {
     const now = Date.now();
     payload.updated_at = now;
     payload.invited_at = now;
-    this.db!.prepare(`
-    INSERT INTO users (id, email, full_name, role, avatar_url, timezone, calendar_sync_enabled, google_calendar_id, available_times, updated_at, invited_at, google_refresh_token, last_calendar_sync, weekly_capacity_hours)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, payload.email, '', payload.role, '', '', 0, '', '', now, now, '', null, 0);
 
-    this.db!.prepare(`
-    INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
-    VALUES (?, ?, ?, ?, ?, ?, 0)
-  `).run(uuidv4(), 'users', id, 1, JSON.stringify(payload), now);
+    const existingUser = this.getUserById(payload.id);
+    if (!existingUser) { // create account
+      this.db!.prepare(`
+        INSERT INTO users (id, email, full_name, role, avatar_url, timezone, calendar_sync_enabled, google_calendar_id,
+                           available_times, updated_at, invited_at, google_refresh_token, last_calendar_sync,
+                           weekly_capacity_hours)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(id, payload.email, '', payload.role, '', '', 0, '', '', now, now, '', null, 0);
+
+      this.db!.prepare(`
+        INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+        VALUES (?, ?, ?, ?, ?, ?, 0)
+      `).run(uuidv4(), 'users', id, 1, JSON.stringify(payload), now);
+    } else {
+      // continue login
+    }
 
     return { id, ...payload, updated_at: now, invited_at: now };
+  }
+
+  public getUserById(id: string) {
+    return this.db!.prepare(`SELECT * FROM users WHERE id=?`).get(id);
   }
 
   public createTeamMember(payload: any) {

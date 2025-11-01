@@ -3,6 +3,7 @@ import {MatCard, MatCardContent, MatCardTitle} from '@angular/material/card';
 import {DatePipe, NgClass, NgForOf} from '@angular/common';
 import {DashboardService} from '../../services/dashboard.service';
 import {MatRipple} from '@angular/material/core';
+import {AuthService} from '../../services/auth.service';
 
 @Component({
   selector: 'app-timeline-widget',
@@ -156,8 +157,10 @@ import {MatRipple} from '@angular/material/core';
 })
 export class TimelineWidgetComponent implements OnInit {
   items: any[] = [];
-  constructor(private svc: DashboardService) {}
+  userId: string = '';
+  constructor(private svc: DashboardService, private auth: AuthService) {}
   async ngOnInit() {
-    this.items = await this.svc.getActivityTimeline(100);
+    this.userId = this.auth.user()?.user?.id || 'user';
+    this.items = await this.svc.getActivityTimeByUser(this.userId, 100);
   }
 }
