@@ -1,6 +1,6 @@
 {
   "name": "teamtrack-desktop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "dist/electron/main.js",
   "type": "commonjs",
   "scripts": {
@@ -22,6 +22,13 @@
     "directories": {
       "output": "dist"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "kavicastelo",
+        "repo": "teamtrack-desktop"
+      }
+    ],
     "files": [
       "dist/electron/**/*",
       "dist/drizzle/**/*",
@@ -35,7 +42,9 @@
     "asar": {
       "smartUnpack": true
     },
-    "asarUnpack": [".env"],
+    "asarUnpack": [
+      ".env"
+    ],
     "win": {
       "target": [
         "nsis"
@@ -77,6 +86,7 @@
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.6",
     "electron-store": "^8.2.0",
+    "electron-updater": "^6.6.2",
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",
     "helmet": "^8.1.0",

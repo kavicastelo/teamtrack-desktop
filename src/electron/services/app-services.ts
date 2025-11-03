@@ -13,6 +13,7 @@ import { ActiveWindowDetectorService } from "../../node/active-window-detector";
 import {GoogleCalendarSyncService} from "../../node/google-calendar-sync.service";
 
 import dotenv from "dotenv";
+import { autoUpdater } from "electron-updater";
 
 const envPath = app.isPackaged
     ? path.join(process.resourcesPath, "app.asar.unpacked", ".env")
@@ -81,6 +82,18 @@ export async function initializeAppServices(mainWindow: BrowserWindow) {
     console.log("[Main] Services initialized.");
 
     return { dbService, syncService, authService, heartbeatService, calendarSync };
+}
+
+export async function checkForUpdates() {
+    await autoUpdater.checkForUpdatesAndNotify();
+
+    autoUpdater.on("checking-for-update", () => console.log("Checking for updates..."));
+    autoUpdater.on("update-available", info => console.log("Update available:", info.version));
+    autoUpdater.on("update-not-available", () => console.log("No update available."));
+    autoUpdater.on("error", err => console.error("Update error:", err));
+    autoUpdater.on("update-downloaded", () => {
+        console.log("Update downloaded. Installing on quit...");
+    });
 }
 
 export async function shutdownServices() {

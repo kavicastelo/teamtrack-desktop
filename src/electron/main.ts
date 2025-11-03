@@ -5,7 +5,7 @@ import path from "path";
 
 import { createMainWindow, getMainWindow } from "./windows/main-window";
 import { registerIPCHandlers } from "./ipc/ipc-handlers";
-import { initializeAppServices, shutdownServices } from "./services/app-services";
+import { initializeAppServices, shutdownServices, checkForUpdates } from "./services/app-services";
 import { registerProtocolHandlers } from "./utils/protocol";
 
 const logFile = path.join(app.getPath("userData"), "startup.log");
@@ -48,6 +48,7 @@ app.on("open-url", (event, url) => {
 });
 
 app.whenReady().then(async () => {
+    await checkForUpdates();
     try {
         fs.writeFileSync(logFile, "App starting...\n");
         const mainWindow = createMainWindow(deepLinkUrl);
