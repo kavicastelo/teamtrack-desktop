@@ -104,6 +104,9 @@ export class IpcService {
   async updateProject(payload: any) {
     return window.electronAPI.updateProject(payload);
   }
+  async deleteProject(id: string) {
+    return window.electronAPI.deleteProject(id);
+  }
 
   async createTeam(payload: any) {
     return window.electronAPI.createTeam(payload);
@@ -111,8 +114,17 @@ export class IpcService {
   async listTeams(projectId?: string|null) {
     return window.electronAPI.listTeams(projectId);
   }
+  async userTeams(userId?: string|null) {
+    return window.electronAPI.userTeams(userId);
+  }
+  async deleteTeam(id: string) {
+    return window.electronAPI.deleteTeam(id);
+  }
   async updateTeam(payload: any) {
     return window.electronAPI.updateTeam(payload);
+  }
+  async getTeam(id: string|null) {
+    return window.electronAPI.getTeam(id);
   }
 
   async pullRemoteUpdates() {

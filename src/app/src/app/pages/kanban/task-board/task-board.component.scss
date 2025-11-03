@@ -9,6 +9,7 @@
   flex-direction: column;
   gap: 16px;
   font-family: "Inter", "Roboto", sans-serif;
+  max-height: calc(100vh - 150px);
 
   .header {
     display: flex;
@@ -108,10 +109,20 @@
     .task-list {
       margin-top: 10px;
       min-height: 100px;
+      max-height: 440px;
       display: flex;
       flex-direction: column;
       gap: 10px;
       transition: background 0.2s;
+      overflow-y: auto;
+
+      &::-webkit-scrollbar {
+        width: 8px;
+      }
+      &::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+      }
     }
 
     .task-card {

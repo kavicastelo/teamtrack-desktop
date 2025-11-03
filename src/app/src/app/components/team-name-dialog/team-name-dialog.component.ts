@@ -72,7 +72,7 @@ export class TeamNameDialogComponent implements OnInit{
   }
 
   confirm() {
-    this.dialogRef.close({ project_id: this.projectId || this.selectedProject.id, name: this.name.trim(), description: this.description.trim() });
+    this.dialogRef.close({ name: this.name.trim(), description: this.description.trim() });
   }
 
   cancel() {

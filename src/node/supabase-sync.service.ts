@@ -484,17 +484,20 @@ export class SupabaseSyncService extends EventEmitter {
                     if (!local || new Date(record.updated_at).getTime() > new Date(local.updated_at).getTime()) {
                         this.dbService.db
                             .prepare(
-                                `INSERT INTO tasks (id, project_id, title, description, status, assignee, updated_at)
-                                 VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                                `INSERT INTO tasks (id, project_id, title, description, status, assignee, updated_at, created_at, due_date, priority)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
                                 UPDATE SET
                                     project_id=excluded.project_id,
                                     title=excluded.title,
                                     description=excluded.description,
                                     status=excluded.status,
                                     assignee=excluded.assignee,
-                                    updated_at=excluded.updated_at`
+                                    updated_at=excluded.updated_at,
+                                    created_at=excluded.created_at,
+                                    due_date=excluded.due_date,
+                                    priority=excluded.priority`
                             )
-                            .run(record.id, record.project_id, record.title, record.description, record.status, record.assignee, record.updated_at);
+                            .run(record.id, record.project_id, record.title, record.description, record.status, record.assignee, record.updated_at, record.created_at, record.due_date, record.priority);
                     }
                 }
 
@@ -552,16 +555,17 @@ export class SupabaseSyncService extends EventEmitter {
                     if (!local || new Date(record.updated_at).getTime() > new Date(local.updated_at).getTime()) {
                         this.dbService.db
                             .prepare(
-                                `INSERT INTO projects (id, name, description, owner_id, created_at, updated_at)
-                                 VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                                `INSERT INTO projects (id, name, description, owner_id, created_at, updated_at, team_id)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
                                 UPDATE SET
                                     name=excluded.name,
                                     description=excluded.description,
                                     owner_id=excluded.owner_id,
                                     created_at=excluded.created_at,
-                                    updated_at=excluded.updated_at`
+                                    updated_at=excluded.updated_at
+                                    team_id=excluded.team_id`
                             )
-                            .run(record.id, record.name, record.description, record.owner_id, record.created_at, record.updated_at);
+                            .run(record.id, record.name, record.description, record.owner_id, record.created_at, record.updated_at, record.team_id);
                     }
                 }
 
@@ -616,18 +620,19 @@ export class SupabaseSyncService extends EventEmitter {
                     if (!local || new Date(record.created_at).getTime() > new Date(local.created_at).getTime()) {
                         this.dbService.db
                             .prepare(
-                                `INSERT INTO attachments (id, taskId, filename, mimetype, size, supabase_path,
+                                `INSERT INTO attachments (id, uploaded_by, taskId, filename, mimetype, size, supabase_path,
                                                           created_at)
-                                 VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
                                 UPDATE SET
                                     taskId=excluded.taskId,
+                                    uploaded_by=excluded.uploaded_by,
                                     filename=excluded.filename,
                                     mimetype=excluded.mimetype,
                                     size=excluded.size,
                                     supabase_path=excluded.supabase_path,
                                     created_at=excluded.created_at`
                             )
-                            .run(record.id, record.taskId, record.filename, record.mimetype, record.size, record.supabase_path, record.created_at);
+                            .run(record.id, record.taskId, record.uploaded_by, record.filename, record.mimetype, record.size, record.supabase_path, record.created_at);
                     }
                 }
 
@@ -683,8 +688,8 @@ export class SupabaseSyncService extends EventEmitter {
                     if (!local || new Date(record.updated_at).getTime() > new Date(local.updated_at).getTime()) {
                         this.dbService.db
                             .prepare(
-                                `INSERT INTO users (id, email, full_name, role, avatar_url, timezone, calendar_sync_enabled, google_calendar_id, available_times, updated_at, invited_at, google_refresh_token, last_calendar_sync)
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                                `INSERT INTO users (id, email, full_name, role, avatar_url, timezone, calendar_sync_enabled, google_calendar_id, available_times, updated_at, invited_at, google_refresh_token, last_calendar_sync, weekly_capacity_hours)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
                                 UPDATE SET
                                     email=excluded.email,
                                     full_name=excluded.full_name,
@@ -697,9 +702,10 @@ export class SupabaseSyncService extends EventEmitter {
                                     updated_at=excluded.updated_at,
                                     invited_at=excluded.invited_at,
                                     google_refresh_token=excluded.google_refresh_token,
-                                    last_calendar_sync=excluded.last_calendar_sync`
+                                    last_calendar_sync=excluded.last_calendar_sync
+                                    weekly_capacity_hours=excluded.weekly_capacity_hours`
                             )
-                            .run(record.id, record.email, record.full_name, record.role, record.avatar_url, record.timezone, record.calendar_sync_enabled, record.google_calendar_id, record.available_times, record.updated_at, record.invited_at, record.google_refresh_token, record.last_calendar_sync);
+                            .run(record.id, record.email, record.full_name, record.role, record.avatar_url, record.timezone, record.calendar_sync_enabled, record.google_calendar_id, record.available_times, record.updated_at, record.invited_at, record.google_refresh_token, record.last_calendar_sync, record.weekly_capacity_hours);
                     }
                 }
 
@@ -773,6 +779,39 @@ export class SupabaseSyncService extends EventEmitter {
             } catch (err) {
                 console.log(err)
                 this.sendToUI("sync:error", {message: "Failed to pull calendar events", error: err});
+            }
+        } else if (tabel === 'time_entries') {
+            try {
+                const {
+                    data,
+                    error
+                } = await this.client.from("time_entries").select("*").order("created_at", {ascending: true});
+                if (error) throw error;
+                if (!Array.isArray(data)) return;
+
+                for (const record of data) {
+                    const local = this.dbService.db.prepare("SELECT * FROM time_entries WHERE id = ?").get(record.id);
+                    if (!local || new Date(record.created_at).getTime() > new Date(local.created_at).getTime()) {
+                        this.dbService.db
+                            .prepare(
+                                `INSERT INTO time_entries (id, user_id, project_id, task_id, start_ts, duration_minutes, created_at)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                                UPDATE SET
+                                    user_id=excluded.user_id,
+                                    project_id=excluded.project_id,
+                                    task_id=excluded.task_id,
+                                    start_ts=excluded.start_ts,
+                                    duration_minutes=excluded.duration_minutes,
+                                    created_at=excluded.created_at`
+                            )
+                            .run(record.id, record.user_id, record.project_id, record.task_id, record.start_ts, record.duration_minutes, record.created_at);
+                    }
+                }
+
+                this.sendToUI("sync:pull", {count: data.length});
+                this.sendToUI("sync:success", {message: "Pulled " + data.length + " time entries"});
+            } catch (err) {
+                this.sendToUI("sync:error", {message: "Failed to pull time entries", error: err});
             }
         }
     }

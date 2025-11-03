@@ -75,6 +75,10 @@ export class AuthService {
     return await window.electronAPI.auth.listUsers();
   }
 
+  async listLocalUsers() {
+    return await window.electronAPI.auth.listLocalUsers();
+  }
+
   async getUser(userId?: string) {
     return window.electronAPI?.auth.getUser(userId);
   }

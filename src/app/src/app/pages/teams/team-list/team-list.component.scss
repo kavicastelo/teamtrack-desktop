@@ -22,6 +22,7 @@ $accent: #8bc34a; // subtle green tone for team section
 }
 
 .btn,
+.btn-danger,
 .btn-secondary {
   display: inline-flex;
   align-items: center;
@@ -49,6 +50,15 @@ $accent: #8bc34a; // subtle green tone for team section
   border: 1px solid $accent;
   &:hover {
     background: rgba($accent, 0.1);
+  }
+}
+
+.btn-danger {
+  background: #f44336;
+  color: #fff;
+  border: 1px solid #f44336;
+  &:hover {
+    background: color.adjust(#f44336, $lightness: 10%);
   }
 }
 
@@ -87,5 +97,9 @@ li {
     display: flex;
     align-items: center;
     justify-content: space-between;
+  }
+
+  .gap-2 {
+    gap: 0.5rem;
   }
 }

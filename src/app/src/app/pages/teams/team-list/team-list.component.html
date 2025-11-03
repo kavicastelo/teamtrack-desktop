@@ -7,7 +7,10 @@
           <h3 class="font-medium">{{ t.name }}</h3>
           <p class="text-sm text-gray-600">{{ t.description }}</p>
         </div>
-        <button (click)="editTeam(t)" class="btn-secondary">Edit</button>
+        <div class="flex gap-2">
+          <button (click)="editTeam(t)" class="btn-secondary">Edit</button>
+          <button (click)="deleteTeam(t)" class="btn-danger">Delete</button>
+        </div>
       </div>
     </li>
   </ul>

@@ -26,6 +26,7 @@
         cdkDropList
         [id]="col.id"
         [cdkDropListData]="col.tasks"
+        [cdkDropListConnectedTo]="connectedDropLists"
         class="task-list"
         [ngClass]="col.id"
         (cdkDropListDropped)="drop($event)">

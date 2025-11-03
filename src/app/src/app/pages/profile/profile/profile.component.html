@@ -51,48 +51,93 @@
   </section>
 
   <section class="upcoming">
-    <h3>Upcoming</h3>
-
-    <div *ngFor="let ev of upcoming" class="event-card"
-         [title]="
+    <mat-tab-group>
+      <mat-tab label="Upcoming">
+        <div *ngFor="let ev of upcoming" class="event-card"
+             [title]="
        (ev.summary || 'No Title') + '\n' +
        (ev.start | date:'EEE MMM dd HH:mm') + ' → ' + (ev.end | date:'HH:mm') + '\n' +
        visibility(ev) + ' · ' +
        ((ev | isRecurring) ? 'Recurring' : 'Single') + '\n' +
        getAttendees(convertJson(ev)).length + ' attendee(s)'
      "
-    >
-      <div class="title-row">
+        >
+          <div class="title-row">
       <span class="icons">
         <span *ngIf="convertJson(ev) | isBirthday">🎂</span>
         <span *ngIf="convertJson(ev) | isRecurring">🔁</span>
         <span>{{ convertJson(ev) | visibilityIcon }}</span>
       </span>
 
-        <strong>{{ ev.summary || '(No title)' }}</strong>
-      </div>
+            <strong>{{ ev.summary || '(No title)' }}</strong>
+          </div>
 
-      <div class="time" [ngClass]="{'all-day': (convertJson(ev) | allDay)}">
-        <ng-container *ngIf="!(convertJson(ev) | allDay)">
-          {{ ev.start | date:'EEE HH:mm' }} → {{ ev.end | date:'HH:mm' }}
-        </ng-container>
+          <div class="time" [ngClass]="{'all-day': (convertJson(ev) | allDay)}">
+            <ng-container *ngIf="!(convertJson(ev) | allDay)">
+              {{ ev.start | date:'EEE HH:mm' }} → {{ ev.end | date:'HH:mm' }}
+            </ng-container>
 
-        <ng-container *ngIf="convertJson(ev) | allDay">
-          All-day
-        </ng-container>
-      </div>
+            <ng-container *ngIf="convertJson(ev) | allDay">
+              All-day
+            </ng-container>
+          </div>
 
-      <div class="meta">
-        By {{ convertJson(ev) | creatorName }}
-        <span class="pill" *ngIf="ev | isBirthday">
+          <div class="meta">
+            By {{ convertJson(ev) | creatorName }}
+            <span class="pill" *ngIf="ev | isBirthday">
         🎉 Turning {{ computeAgeTurning(ev) }}
       </span>
-      </div>
+          </div>
 
-      <div class="attendees-row">
-        <ng-container *ngTemplateOutlet="attendeeTpl; context:{ev: convertJson(ev)}"></ng-container>
-      </div>
-    </div>
+          <div class="attendees-row">
+            <ng-container *ngTemplateOutlet="attendeeTpl; context:{ev: convertJson(ev)}"></ng-container>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Past">
+        <div *ngFor="let ev of past" class="event-card"
+             [title]="
+       (ev.summary || 'No Title') + '\n' +
+       (ev.start | date:'EEE MMM dd HH:mm') + ' → ' + (ev.end | date:'HH:mm') + '\n' +
+       visibility(ev) + ' · ' +
+       ((ev | isRecurring) ? 'Recurring' : 'Single') + '\n' +
+       getAttendees(convertJson(ev)).length + ' attendee(s)'
+     "
+        >
+          <div class="title-row">
+      <span class="icons">
+        <span *ngIf="convertJson(ev) | isBirthday">🎂</span>
+        <span *ngIf="convertJson(ev) | isRecurring">🔁</span>
+        <span>{{ convertJson(ev) | visibilityIcon }}</span>
+      </span>
+
+            <strong>{{ ev.summary || '(No title)' }}</strong>
+          </div>
+
+          <div class="time" [ngClass]="{'all-day': (convertJson(ev) | allDay)}">
+            <ng-container *ngIf="!(convertJson(ev) | allDay)">
+              {{ ev.start | date:'EEE HH:mm' }} → {{ ev.end | date:'HH:mm' }}
+            </ng-container>
+
+            <ng-container *ngIf="convertJson(ev) | allDay">
+              All-day
+            </ng-container>
+          </div>
+
+          <div class="meta">
+            By {{ convertJson(ev) | creatorName }}
+            <span class="pill" *ngIf="ev | isBirthday">
+        🎉 Turning {{ computeAgeTurning(ev) }}
+      </span>
+          </div>
+
+          <div class="attendees-row">
+            <ng-container *ngTemplateOutlet="attendeeTpl; context:{ev: convertJson(ev)}"></ng-container>
+          </div>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
   </section>
 
   <ng-template #attendeeTpl let-ev="ev">
