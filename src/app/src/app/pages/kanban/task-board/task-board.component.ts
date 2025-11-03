@@ -48,6 +48,8 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
 
   users: any[] = [];
 
+  connectedDropLists: string[] = this.columns.map(c => c.id);
+
   constructor(private ipc: IpcService, private auth: AuthService, private dialog: MatDialog) {}
 
   ngOnInit(): void {

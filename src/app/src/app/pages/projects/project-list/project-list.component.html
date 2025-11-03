@@ -7,7 +7,11 @@
           <h3 class="font-medium">{{ p.name }}</h3>
           <p class="text-sm text-gray-600">{{ p.description }}</p>
         </div>
-        <button (click)="selectProject(p)" class="btn-secondary">View</button>
+        <div class="flex gap-2">
+          <button (click)="selectProject(p)" class="btn-primary">View</button>
+          <button (click)="editProject(p)" class="btn-secondary">Edit</button>
+          <button (click)="deleteProject(p)" class="btn-danger">Delete</button>
+        </div>
       </div>
     </li>
   </ul>

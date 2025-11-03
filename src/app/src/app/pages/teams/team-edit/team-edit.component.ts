@@ -63,25 +63,26 @@ export class TeamEditComponent implements OnInit {
   form!: FormGroup;
   isLoading = signal(false);
   teamId: string | null = null;
-  projectId: string | null = null;
 
   members = signal<any[]>([]);
   allUsers = signal<any[]>([]);
+  projects = signal<any[]>([]);
 
   async ngOnInit() {
     this.form = this.fb.group({
       name: ['', [Validators.required, Validators.maxLength(100)]],
       description: [''],
+      project_id: [''],
     });
 
     this.teamId = this.route.snapshot.paramMap.get('teamId');
-    this.projectId = this.route.snapshot.paramMap.get('projectId');
 
     await this.loadUsers();
 
     if (this.teamId) {
       await this.loadTeam();
       await this.loadMembers();
+      await this.loadProjects();
     }
   }
 
@@ -89,7 +90,6 @@ export class TeamEditComponent implements OnInit {
     try {
       const users = await this.auth.listUsers();
       this.allUsers.set(users || []);
-      console.log(this.allUsers())
     } catch (err) {
       console.error(err);
       this.snack.open('Failed to load users', 'Dismiss', { duration: 3000 });
@@ -99,13 +99,22 @@ export class TeamEditComponent implements OnInit {
   async loadTeam() {
     this.isLoading.set(true);
     try {
-      const teams = await this.ipc.listTeams(this.projectId);
-      const team = teams.find((t: any) => t.id === this.teamId);
+      if (!this.teamId) return;
+      const team = await this.ipc.getTeam(this.teamId);
       if (team) this.form.patchValue(team);
     } catch (err) {
       this.snack.open('Failed to load team', 'Dismiss', { duration: 3000 });
     } finally {
       this.isLoading.set(false);
+    }
+  }
+
+  async loadProjects() {
+    try {
+      const projects = await this.ipc.listProjects();
+      this.projects.set(projects || []);
+    } catch (err) {
+      console.error(err);
     }
   }
 
@@ -130,7 +139,6 @@ export class TeamEditComponent implements OnInit {
     const payload = {
       ...this.form.value,
       id: this.teamId,
-      project_id: this.projectId,
     };
 
     try {

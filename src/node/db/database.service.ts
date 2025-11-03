@@ -385,7 +385,7 @@ export class DatabaseService {
 
   deleteTask(taskId: string) {
     try {
-      this.db!.prepare(`DELETE FROM revisions WHERE object_id = ?`).run(taskId);
+      this.db!.prepare(`DELETE FROM revisions WHERE object_type = 'tasks' AND object_id = ?`).run(taskId);
       this.db!.prepare(`DELETE FROM tasks WHERE id = ?`).run(taskId);
       return true;
     } catch (err: any) {
@@ -448,7 +448,7 @@ export class DatabaseService {
     if (!payload.id) throw new Error("Missing project ID");
     const now = Date.now();
     this.db!.prepare(`
-    UPDATE projects SET name=?, description=?, team_id, updated_at=? WHERE id=?
+    UPDATE projects SET name=?, description=?, team_id=?, updated_at=? WHERE id=?
   `).run(payload.name, payload.description || '', payload.team_id || null, now, payload.id);
 
     this.db!.prepare(`
@@ -457,6 +457,17 @@ export class DatabaseService {
   `).run(crypto.randomUUID(), 'projects', payload.id, Date.now(), JSON.stringify(payload), now);
 
     return { ...payload, updated_at: now };
+  }
+
+  deleteProject(projectId: string) {
+    try {
+      this.db!.prepare(`DELETE FROM revisions WHERE object_type = 'projects' AND object_id = ?`).run(projectId);
+      this.db!.prepare(`DELETE FROM projects WHERE id = ?`).run(projectId);
+      return true;
+    } catch (err: any) {
+      console.error("[DB] deleteProject error:", err);
+      return false;
+    }
   }
 
 // TEAMS
@@ -485,12 +496,28 @@ export class DatabaseService {
     return this.db!.prepare(`SELECT * FROM teams ORDER BY updated_at DESC`).all();
   }
 
+  userTeams(userId) {
+    const stmt = this.db!.prepare(`
+    SELECT t.name
+    FROM teams t
+    INNER JOIN team_members tm ON t.id = tm.team_id
+    WHERE tm.user_id = ?
+  `);
+
+    const rows = stmt.all(userId);
+    return rows.map((row: any) => row.name);
+  }
+
+  getTeam(teamId: string) {
+    return this.db!.prepare(`SELECT * FROM teams WHERE id=?`).get(teamId);
+  }
+
   updateTeam(payload: any) {
     if (!payload.id) throw new Error("Missing team ID");
     const now = Date.now();
     this.db!.prepare(`
-    UPDATE teams SET name=?, description=?, updated_at=? WHERE id=?
-  `).run(payload.name, payload.description || '', now, payload.id);
+    UPDATE teams SET project_id=?, name=?, description=?, created_at=?, updated_at=? WHERE id=?
+  `).run(payload.project_id || null, payload.name, payload.description || '', payload.created_at, now, payload.id);
 
     this.db!.prepare(`
     INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
@@ -498,6 +525,17 @@ export class DatabaseService {
   `).run(crypto.randomUUID(), 'teams', payload.id, Date.now(), JSON.stringify(payload), now);
 
     return { ...payload, updated_at: now };
+  }
+
+  deleteTeam(teamId: string) {
+    try {
+      this.db!.prepare(`DELETE FROM revisions WHERE object_type = 'teams' AND object_id = ?`).run(teamId);
+      this.db!.prepare(`DELETE FROM teams WHERE id = ?`).run(teamId);
+      return true;
+    } catch (err: any) {
+      console.error("[DB] deleteTeam error:", err);
+      return false;
+    }
   }
 
 // USERS
@@ -530,6 +568,10 @@ export class DatabaseService {
 
   public getUserById(id: string) {
     return this.db!.prepare(`SELECT * FROM users WHERE id=?`).get(id);
+  }
+
+  public listLocalUsers() {
+    return this.db!.prepare(`SELECT * FROM users`).all();
   }
 
   public createTeamMember(payload: any) {

@@ -34,12 +34,20 @@ export class TeamListComponent implements OnInit {
     const result = await dialogRef.afterClosed().toPromise();
     if (result?.name) {
       await this.ipc.createTeam(result);
-      this.teams = await this.ipc.listProjects(this.projectId);
+      this.teams = await this.ipc.listTeams(this.projectId);
     }
   }
   async editTeam(t: any) {
     if (t) {
-      this.router.navigate([`/projects/${this.projectId}/teams/${t.id}/edit`]).then();
+      this.router.navigate([`/team/${this.projectId}/teams/${t.id}/edit`]).then();
+    }
+  }
+  async deleteTeam(t: any) {
+    if (t) {
+      if (confirm('Are you sure you want to delete this team?')) {
+        await this.ipc.deleteTeam(t.id);
+        this.teams = await this.ipc.listTeams(this.projectId);
+      }
     }
   }
 }

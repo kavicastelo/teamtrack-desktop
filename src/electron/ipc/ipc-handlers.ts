@@ -27,8 +27,26 @@ export function registerIPCHandlers(services: {
         return { url };
     });
     ipcMain.handle("auth:handleCallback", (_, url) => authService.handleCallback(url));
-    ipcMain.handle("auth:restoreSession", () => authService.restoreSession());
-    ipcMain.handle("auth:signOut", () => authService.signOut());
+    ipcMain.handle("auth:restoreSession", async () => {
+        const session = await authService.restoreSession();
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "session:restore",
+            object_type: "user",
+            object_id: session?.user?.id,
+            payload: session,
+        });
+        return session;
+    });
+    ipcMain.handle("auth:signOut", async () => {
+        await authService.signOut();
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "session:sign_out",
+            object_type: "user",
+            object_id: currentUserId,
+        })
+    });
 
     /** Users **/
     ipcMain.handle('auth:set-user-id', (event, id) => {
@@ -43,21 +61,59 @@ export function registerIPCHandlers(services: {
     ipcMain.handle('auth:listUsers', async () => {
         return await authService.listUsers();
     });
+    ipcMain.handle('auth:listLocalUsers', async () => {
+        return dbService.listLocalUsers();
+    });
     ipcMain.handle('auth:updateUserRole', async (_, payload) => {
-        return await authService.updateUserRole(payload.userId, payload.role, payload.teamId);
+        const user = await authService.updateUserRole(payload.userId, payload.role, payload.teamId);
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "user:update_role",
+            object_type: "user",
+            object_id: 'admin',
+            payload: user,
+        })
+        return user;
     });
     ipcMain.handle('auth:removeUser', async (_, payload) => {
         // payload: { userId, hardDelete?: boolean }
-        return await authService.removeUser(payload.userId, payload.hardDelete);
+        const user = await authService.removeUser(payload.userId, payload.hardDelete);
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "user:remove",
+            object_type: "user",
+            object_id: 'admin',
+            payload: user,
+        })
+        return user;
     });
-    ipcMain.handle('auth:updatePassword', async (_, password) => authService.updatePassword(password));
+    ipcMain.handle('auth:updatePassword', async (_, password) => {
+        const user = await authService.updatePassword(password)
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "user:update_password",
+            object_type: "user",
+            object_id: currentUserId,
+            payload: user,
+        })
+        return user;
+    });
 
-    ipcMain.handle('db:updateProfile', async (_, profile) => authService.updateProfile(profile));
+    ipcMain.handle('db:updateProfile', async (_, profile) => {
+        const user = await authService.updateProfile(profile)
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "user:update_profile",
+            object_type: "user",
+            object_id: currentUserId,
+            payload: user,
+        })
+        return user;
+    });
 
     /** Tasks */
     ipcMain.handle("task:list", (_e, projectId) => dbService.listTasks(projectId));
     ipcMain.handle("task:create", async (_e, payload) => {
-        console.log(currentUserId)
         const task = dbService.createTask(payload);
         await dbService.logEvent({
             actor: currentUserId,
@@ -151,6 +207,17 @@ export function registerIPCHandlers(services: {
         });
         return project;
     });
+    ipcMain.handle("db:deleteProject", async (_, projectId: string) => {
+        const projectDeleted = dbService.deleteProject(projectId);
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "project:delete",
+            object_type: "project",
+            object_id: projectId,
+            payload: "project("+projectId+") deleted",
+        });
+        return projectDeleted;
+    })
 
     /** Teams **/
     ipcMain.handle("db:createTeam", async (_, payload) => {
@@ -165,6 +232,8 @@ export function registerIPCHandlers(services: {
         return team;
     });
     ipcMain.handle("db:listTeams", async (_, projectId) => dbService.listTeams(projectId));
+    ipcMain.handle('db:userTeams', async (_, userId) => dbService.userTeams(userId));
+    ipcMain.handle("db:getTeam", async (_, teamId) => dbService.getTeam(teamId));
     ipcMain.handle("db:updateTeam", async (_, payload) => {
         const team = dbService.updateTeam(payload);
         await dbService.logEvent({
@@ -175,6 +244,17 @@ export function registerIPCHandlers(services: {
             payload: team,
         });
         return team;
+    });
+    ipcMain.handle("db:deleteTeam", async (_, teamId: string) => {
+        const teamDeleted = dbService.deleteTeam(teamId);
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "team:delete",
+            object_type: "team",
+            object_id: teamId,
+            payload: "team("+teamId+") deleted",
+        });
+        return teamDeleted;
     });
 
     /** Raw query passthrough **/

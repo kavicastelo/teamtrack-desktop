@@ -13,8 +13,17 @@
         <textarea matInput formControlName="description" rows="3"></textarea>
       </mat-form-field>
 
+      <mat-form-field appearance="fill">
+        <mat-label>Project</mat-label>
+        <mat-select formControlName="project_id">
+          <mat-option *ngFor="let p of projects()" [value]="p.id">
+            {{ p.name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
       <div class="actions">
-        <button mat-stroked-button type="button" (click)="router.navigate(['/projects', projectId, 'teams'])">
+        <button mat-stroked-button type="button" (click)="router.navigate(['/team', form.controls['project_id'].value])">
           Cancel
         </button>
         <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid">

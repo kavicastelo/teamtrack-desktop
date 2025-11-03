@@ -8,6 +8,8 @@ import crypto from "crypto";
 
 import dotenv from "dotenv";
 import path from "path";
+const Store = require('electron-store');
+const store = new Store();
 
 const envPath = app.isPackaged
     ? path.join(process.resourcesPath, "app.asar.unpacked", ".env")
@@ -15,6 +17,7 @@ const envPath = app.isPackaged
 dotenv.config({ path: envPath });
 
 export function registerGoogleCalendarIPC(authService: AuthService, dbService: DatabaseService, calendarSync: GoogleCalendarSyncService) {
+    const currentUserId = store.get('currentUserId');
     ipcMain.handle("google-calendar:connect", async (_, userId: string | null) => {
         const clientId = process.env.GOOGLE_CLIENT_ID!;
         const redirectUri = "http://127.0.0.1:47845/google-auth";
@@ -35,6 +38,16 @@ export function registerGoogleCalendarIPC(authService: AuthService, dbService: D
         authUrl.searchParams.set("state", state);
 
         await shell.openExternal(authUrl.toString());
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "google-calendar:connect",
+            object_type: "user",
+            object_id: userId,
+            payload: {
+                redirect_uri: redirectUri,
+                state,
+            },
+        })
         return { success: true };
     });
 
@@ -45,6 +58,12 @@ export function registerGoogleCalendarIPC(authService: AuthService, dbService: D
         await orm.update(users)
             .set({ calendar_sync_enabled: 0, google_refresh_token: '', google_calendar_id: '' })
             .where(eq(users.id, originUser.user.id));
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "google-calendar:disconnect",
+            object_type: "user",
+            object_id: userId
+        })
         return { success: true };
     });
 
@@ -63,18 +82,37 @@ export function registerGoogleCalendarIPC(authService: AuthService, dbService: D
     ipcMain.handle("google-calendar:sync", async (_, userId: string|null) => {
         if (!userId) throw new Error("userId required for sync");
         const count = await calendarSync.syncGoogleToLocal(userId);
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "google-calendar:sync",
+            object_type: "user",
+            object_id: userId
+        })
         return { synced: count };
     });
 
     ipcMain.handle("google-calendar:create-event", async (_, { userId, start, end, summary }) => {
         if (!userId) throw new Error("userId required");
         const ev = await calendarSync.createEventForUser(userId, start, end, summary);
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "google-calendar:create-event",
+            object_type: "user",
+            object_id: userId,
+            payload: ev
+        })
         return ev;
     });
 
     ipcMain.handle("google-calendar:delete-event", async (_, { userId, eventId }) => {
         if (!userId) throw new Error("userId required");
         await calendarSync.deleteEventForUser(userId, eventId);
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "google-calendar:delete-event",
+            object_type: "user",
+            object_id: userId
+        })
         return { ok: true };
     });
 

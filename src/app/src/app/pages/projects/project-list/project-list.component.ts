@@ -39,4 +39,28 @@ export class ProjectListComponent implements OnInit{
   selectProject(p: any) {
     this.router.navigate([`/project/${p.id}`]).then();
   }
+
+  async editProject(p: any) {
+    const dialogRef = this.dialog.open(ProjectNameDialogComponent, {
+      width: '400px',
+      panelClass: 'dialog-dark-theme',
+      data: {project: p}
+    });
+
+    const result = await dialogRef.afterClosed().toPromise();
+    if (result?.name) {
+      await this.ipc.updateProject(result);
+      this.projects = await this.ipc.listProjects();
+    }
+  }
+
+  deleteProject(p: any) {
+    if (p) {
+      if (window.confirm('Are you sure you want to delete this project?')) {
+        this.ipc.deleteProject(p.id).then(async () => {
+          this.projects = await this.ipc.listProjects();
+        });
+      }
+    }
+  }
 }

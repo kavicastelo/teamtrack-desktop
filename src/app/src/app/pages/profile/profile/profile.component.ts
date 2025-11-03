@@ -8,6 +8,7 @@ import {
   IsRecurringPipe,
   VisibilityIconPipe
 } from '../../../components/pipes/calendar-pipes';
+import {MatTab, MatTabGroup} from '@angular/material/tabs';
 
 @Component({
   selector: 'app-user-profile',
@@ -22,7 +23,9 @@ import {
     IsRecurringPipe,
     VisibilityIconPipe,
     AllDayPipe,
-    CreatorNamePipe
+    CreatorNamePipe,
+    MatTabGroup,
+    MatTab
   ],
   templateUrl: './profile.component.html',
   styleUrls: ['./profile.component.scss'],
@@ -86,24 +89,12 @@ export class ProfileComponent implements OnInit {
       const raw = this.convertJson(e);
 
       // Identify birthdays
-      if (raw?.birthdayProperties || raw?.summary?.toLowerCase().trim().includes('birthday')) {
-        const original = new Date(e.start);
-
-        // Construct this year's birthday
-        const yearly = new Date(currentYear, original.getMonth(), original.getDate());
-        if (yearly < now) {
-          yearly.setFullYear(currentYear + 1); // already happened → next year
-        }
-
-        // Replace start/end fields in place
-        e.start = yearly.getTime();
-        e.end = yearly.getTime() + 24 * 60 * 59 * 1000;
+      if (raw?.birthdayProperties || raw?.summary?.toLowerCase()?.includes('birthday')) {
+        const normalized = this.normalizeBirthdayEvent(e, currentYear, now);
 
         const key = raw?.recurringEventId || e.id;
-
-        // Only store the *upcoming* birthday
-        if (!birthdayMap.has(key) || e.start < birthdayMap.get(key).start) {
-          birthdayMap.set(key, e);
+        if (!birthdayMap.has(key) || normalized.start < birthdayMap.get(key).start) {
+          birthdayMap.set(key, normalized);
         }
       } else {
         regularEvents.push(e);
@@ -112,6 +103,41 @@ export class ProfileComponent implements OnInit {
 
     // Merge
     this.events = [...regularEvents, ...birthdayMap.values()];
+  }
+
+  normalizeBirthdayEvent(e: any, currentYear: number, now: Date) {
+    const raw = this.convertJson(e);
+    if (!raw) return e;
+
+    const isBirthday =
+      raw?.birthdayProperties ||
+      raw?.summary?.toLowerCase()?.includes('birthday');
+
+    if (!isBirthday) return e;
+
+    // Parse original birthday date (YYYY-MM-DD)
+    const dateStr = raw?.start?.date || raw?.originalStartTime?.date;
+    if (!dateStr) return e;
+
+    const original = new Date(dateStr); // original birth date (e.g. 2000-11-01)
+    let yearly = new Date(currentYear, original.getMonth(), original.getDate());
+
+    // If this year's birthday already passed, shift to next year
+    if (yearly < now) {
+      yearly.setFullYear(currentYear + 1);
+    }
+
+    // Construct start and end as midnight-local “date-only” event
+    const start = new Date(yearly.getFullYear(), yearly.getMonth(), yearly.getDate());
+    const end = new Date(yearly.getFullYear(), yearly.getMonth(), yearly.getDate() + 1);
+
+    e.start = start.getTime();
+    e.end = end.getTime();
+
+    // Optional: store normalized flag to avoid reprocessing on refresh
+    e._normalized = true;
+
+    return e;
   }
 
   async connect() {
@@ -136,9 +162,19 @@ export class ProfileComponent implements OnInit {
 
   get upcoming() {
     const now = Date.now();
+    const limit = now + 30 * 24 * 60 * 60 * 1000; // 30 days
+
     return this.events
-      .filter(e => e.end > now)
+      .filter(e => e.end > now && e.start < limit)
       .sort((a, b) => a.start - b.start)
+      .slice(0, 8);
+  }
+
+  get past() {
+    const now = Date.now();
+    return this.events
+      .filter(e => e.end < now)
+      .sort((a, b) => b.start - a.start)
       .slice(0, 8);
   }
 
@@ -149,17 +185,24 @@ export class ProfileComponent implements OnInit {
       new Date(now.getFullYear(), now.getMonth(), now.getDate() + i)
     );
 
-    return days.map((d) => ({
-      date: d,
-      busy: this.events.some(e => {
+    return days.map((d) => {
+      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+
+      const busy = this.events.some(e => {
         const s = new Date(e.start);
         const en = new Date(e.end);
-        return (
-          d >= new Date(s.getFullYear(), s.getMonth(), s.getDate()) &&
-          d <= new Date(en.getFullYear(), en.getMonth(), en.getDate())
-        );
-      })
-    }));
+
+        // Normalize to date boundaries
+        const sDate = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+        const eDate = new Date(en.getFullYear(), en.getMonth(), en.getDate());
+
+        // Treat end as exclusive (Google-style)
+        return sDate < dayEnd && eDate > dayStart;
+      });
+
+      return { date: d, busy };
+    });
   }
 
   getAttendees(e: any): any[] {

@@ -1,6 +1,8 @@
-<h3 class="title">Viewing: {{project[0].name}}</h3>
-<p class="text">{{project[0].description}}</p>
-<p class="text-sm">last updated: {{project[0].updated_at | date}}</p>
+<div *ngIf="!loading">
+  <h3 class="title">Viewing: {{project.name || 'Project'}}</h3>
+  <p class="text">{{project.description || 'No description'}}</p>
+  <p class="text-sm">last updated: {{(project.updated_at | date) || ''}}</p>
 
-<app-task-board [projectId]="project[0].id"></app-task-board>
-<app-team-list [projectId]="project[0].id"></app-team-list>
+  <app-task-board [projectId]="project.id || 'no_id'"></app-task-board>
+  <app-team-list [projectId]="project.id || 'no_id'"></app-team-list>
+</div>

@@ -1,5 +1,11 @@
-import { Component } from '@angular/core';
-import {MatDialogActions, MatDialogContent, MatDialogRef, MatDialogTitle} from '@angular/material/dialog';
+import {Component, Inject} from '@angular/core';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogActions,
+  MatDialogContent,
+  MatDialogRef,
+  MatDialogTitle
+} from '@angular/material/dialog';
 import {FormsModule} from '@angular/forms';
 import {MatButton} from '@angular/material/button';
 import {MatInput} from '@angular/material/input';
@@ -45,7 +51,7 @@ import {MatOption, MatSelect} from '@angular/material/select';
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button (click)="cancel()">Cancel</button>
-      <button mat-flat-button color="primary" (click)="confirm()">Create</button>
+      <button mat-flat-button color="primary" (click)="isUpdate?update():confirm()">{{isUpdate?'Update':'Create'}}</button>
     </mat-dialog-actions>
   `
 })
@@ -54,15 +60,28 @@ export class ProjectNameDialogComponent {
   description = '';
   teams: any[] = [];
   selectedTeam: any;
+  isUpdate = false;
 
-  constructor(private dialogRef: MatDialogRef<ProjectNameDialogComponent>, private ipc: IpcService) {}
+  constructor(private dialogRef: MatDialogRef<ProjectNameDialogComponent>,
+              @Inject(MAT_DIALOG_DATA) public data: { project: any },
+              private ipc: IpcService) {}
 
   async ngOnInit() {
     this.teams = await this.ipc.listTeams();
+    if (this.data?.project) {
+      this.isUpdate = true;
+      this.name = this.data.project.name;
+      this.description = this.data.project.description;
+      this.selectedTeam = this.teams.find(t => t.id === this.data.project.team_id);
+    }
   }
 
   confirm() {
     this.dialogRef.close({ name: this.name.trim(), description: this.description.trim(), team_id: this.selectedTeam?.id });
+  }
+
+  update() {
+    this.dialogRef.close({ id: this.data.project.id, name: this.name.trim(), description: this.description.trim(), team_id: this.selectedTeam?.id });
   }
 
   cancel() {
