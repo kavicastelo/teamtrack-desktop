@@ -41,15 +41,10 @@ export class ActiveWindowDetectorService extends EventEmitter {
                 const aw = await activeWin();
                 if (!aw) return;
 
-                const key = `${aw.owner.name || ''}::${aw.title || ''}`;
-                if (key === this.lastWindowKey) return; // only emit on change
-
-                this.lastWindowKey = key;
-                const classified = this.classify(aw.owner?.name, aw.title);
                 const payload = {
                     owner: aw.owner,
                     title: aw.title,
-                    platform: classified,
+                    platform: this.classify(aw.owner?.name, aw.title),
                     timestamp: Date.now(),
                 } as ActiveWindow;
                 this.emit('active-window', payload);

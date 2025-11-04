@@ -619,16 +619,17 @@ export class DatabaseService {
 // HEARTBEATS
   createHeartbeat(payload: any) {
     const id = payload.id || uuidv4();
-    const now = Date.now();
     payload.id = id;
-    payload.created_at = now;
-    payload.synced = 0;
+    const now = Date.now();
+    payload.timestamp = payload.timestamp || now;
+    payload.last_seen = payload.last_seen || now;
+    payload.metadata = payload.metadata || {};
+    payload.duration_ms = payload.duration_ms || 0;
 
     this.db!.prepare(`
-    INSERT INTO heartbeats (
-      id, user_id, timestamp, duration_ms, source, platform, app, title, metadata
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
+      INSERT INTO heartbeats (id, user_id, timestamp, duration_ms, source, platform, app, title, metadata, team_id, last_seen)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
         id,
         payload.user_id,
         payload.timestamp,
@@ -637,15 +638,24 @@ export class DatabaseService {
         payload.platform,
         payload.app,
         payload.title,
-        payload.metadata
+        JSON.stringify(payload.metadata),
+        payload.team_id || null,
+        payload.last_seen
     );
 
     this.db!.prepare(`
-    INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
-    VALUES (?, ?, ?, ?, ?, ?, 0)
-  `).run(uuidv4(), 'heartbeats', id, 1, JSON.stringify(payload), now);
+            INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+            VALUES (?, ?, ?, ?, ?, ?, 0)
+        `).run(
+        uuidv4(),
+        'heartbeats',
+        id,
+        1,  // New heartbeat; use higher seq for updates if implemented later
+        JSON.stringify(payload),
+        now
+    );
 
-    return payload;
+    return { id, ...payload };
   }
 
 // CALENDARS

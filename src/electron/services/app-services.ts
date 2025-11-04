@@ -9,7 +9,7 @@ import { AuthService } from "./auth.service";
 import { HeartbeatService } from "../../node/heartbeat.service";
 import { LocalCollectorServer } from "../../node/local-collector-server";
 import { IdleMonitorService } from "../../node/idle-monitor.service";
-import { ActiveWindowDetectorService } from "../../node/active-window-detector";
+import {ActiveWindow, ActiveWindowDetectorService} from "../../node/active-window-detector";
 import {GoogleCalendarSyncService} from "../../node/google-calendar-sync.service";
 
 import dotenv from "dotenv";
@@ -20,6 +20,8 @@ const envPath = app.isPackaged
     : path.join(process.cwd(), ".env");
 dotenv.config({ path: envPath });
 
+const store = new Store();
+
 let dbService: DatabaseService;
 let syncService: SupabaseSyncService;
 let authService: AuthService;
@@ -29,8 +31,11 @@ let activeWindowDetector: ActiveWindowDetectorService;
 let localCollector: LocalCollectorServer;
 let calendarSync: GoogleCalendarSyncService;
 
+// Desktop activity aggregation state
+let currentSession: { startTime: number; win: ActiveWindow; key: string } | null = null;
+let flushInterval: NodeJS.Timeout | null = null;
+
 export async function initializeAppServices(mainWindow: BrowserWindow) {
-    const store = new Store();
     const key =
         (store.get("dbKey") as string) ||
         (() => {
@@ -73,6 +78,7 @@ export async function initializeAppServices(mainWindow: BrowserWindow) {
 
     // Start monitors
     localCollector.start();
+    heartbeatService.start();
     activeWindowDetector.start();
     idleMonitor.start();
 
@@ -99,6 +105,22 @@ export async function checkForUpdates() {
 export async function shutdownServices() {
     console.log("[Main] Shutting down services...");
     try {
+        // Flush final desktop session
+        if (currentSession) {
+            const now = Date.now();
+            const duration = now - currentSession.startTime;
+            if (duration > 0) {
+                const payload = createDesktopPayload(currentSession.win, currentSession.startTime, duration, now);
+                heartbeatService.recordHeartbeat(payload);
+            }
+            currentSession = null;
+        }
+
+        if (flushInterval) clearInterval(flushInterval);
+        await heartbeatService.stop();
+        await localCollector.stop();
+        await idleMonitor.stop();
+        await activeWindowDetector.stop();
         await syncService?.stop();
         await dbService?.close();
         await calendarSync?.stop();
@@ -108,36 +130,45 @@ export async function shutdownServices() {
 }
 
 function attachHeartbeatListeners() {
-    localCollector.on("extension-heartbeat", async (hb) => {
-        await heartbeatService.recordHeartbeat({
-            timestamp: hb.timestamp || Date.now(),
-            source: "extension",
-            platform: hb.platform || hb.app || "extension",
-            app: hb.app,
-            title: hb.title,
-            metadata: hb.metadata || {},
-            duration_ms: hb.duration_ms || undefined,
-        });
+    // Listen for extension/plugin heartbeats
+    localCollector.on('extension-heartbeat', (hb: any) => {
+        heartbeatService.recordHeartbeat(hb);
     });
 
-    activeWindowDetector.on("active-window", async (win) => {
-        if (idleMonitor.getIdleState()) return;
-        await heartbeatService.recordHeartbeat({
-            timestamp: win.timestamp,
-            source: "detector",
-            platform: win.platform,
-            app: win.owner?.name,
-            title: win.title,
-        });
+    // Desktop activity handler (active windows)
+    activeWindowDetector.on('active-window', (win: ActiveWindow) => {
+        if (idleMonitor.getIdleState()) return;  // Skip if idle
+
+        const key = `${win.owner.name || ''}::${win.title || ''}`;
+
+        const now = Date.now();
+        if (currentSession && key !== currentSession.key) {
+            // Flush old session on change
+            const duration = now - currentSession.startTime;
+            if (duration > 0) {
+                const payload = createDesktopPayload(currentSession.win, currentSession.startTime, duration, now);
+                heartbeatService.recordHeartbeat(payload);
+            }
+            // Start new
+            currentSession = { startTime: now, win, key };
+        } else if (!currentSession) {
+            // Start first session
+            currentSession = { startTime: now, win, key };
+        }
     });
 
-    idleMonitor.on("idle-start", async (info) => {
-        await heartbeatService.recordHeartbeat({
-            timestamp: Date.now(),
-            source: "system",
-            platform: "idle",
-            metadata: { idleSeconds: info.idleSeconds },
-        });
+    // Idle handlers
+    idleMonitor.on('idle-start', ({ since, idleSeconds }: { since: number; idleSeconds: number }) => {
+        const now = Date.now();
+        const idleStart = now - idleSeconds * 1000;
+        if (currentSession) {
+            const duration = idleStart - currentSession.startTime;
+            if (duration > 0) {
+                const payload = createDesktopPayload(currentSession.win, currentSession.startTime, duration, idleStart);
+                heartbeatService.recordHeartbeat(payload);
+            }
+            currentSession = null;
+        }
     });
 
     idleMonitor.on("idle-end", async () => {
@@ -147,4 +178,39 @@ function attachHeartbeatListeners() {
             platform: "active",
         });
     });
+
+    // Periodic flush for long sessions (every 60s)
+    flushInterval = setInterval(() => {
+        if (currentSession && !idleMonitor.getIdleState()) {
+            const now = Date.now();
+            const duration = now - currentSession.startTime;
+            if (duration > 0) {
+                const payload = createDesktopPayload(currentSession.win, currentSession.startTime, duration, now);
+                heartbeatService.recordHeartbeat(payload);
+            }
+            currentSession.startTime = now;  // Continue session
+        }
+    }, 60000);
+
+    // Return services for IPC handlers
+    return { dbService, authService, localCollector, heartbeatService, idleMonitor, activeWindowDetector /* others */ };
+}
+
+function createDesktopPayload(win: ActiveWindow, startTime: number, duration: number, lastSeen: number) {
+    const userId = store.get('currentUserId');
+    return {
+        user_id: userId,
+        timestamp: startTime,
+        duration_ms: duration,
+        source: 'desktop',
+        platform: win.platform,
+        app: win.owner.name,
+        title: win.title,
+        metadata: {
+            path: win.owner.path,
+            processId: win.owner.processId
+        },
+        team_id: dbService.userTeams(userId)[0]?.id || null,
+        last_seen: lastSeen
+    };
 }
