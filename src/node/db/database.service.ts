@@ -508,6 +508,18 @@ export class DatabaseService {
     return rows.map((row: any) => row.name);
   }
 
+  teamIds(userId) {
+    const stmt = this.db!.prepare(`
+    SELECT t.id
+    FROM teams t
+    INNER JOIN team_members tm ON t.id = tm.team_id
+    WHERE tm.user_id = ?
+  `);
+
+    const rows = stmt.all(userId);
+    return rows.map((row: any) => row.id);
+  }
+
   getTeam(teamId: string) {
     return this.db!.prepare(`SELECT * FROM teams WHERE id=?`).get(teamId);
   }
@@ -656,6 +668,35 @@ export class DatabaseService {
     );
 
     return { id, ...payload };
+  }
+
+  getHeartbeatsForUser(userId: string, startDate: number, endDate: number) {
+    return this.db!.prepare(`
+            SELECT * FROM heartbeats
+            WHERE user_id = ? AND timestamp BETWEEN ? AND ?
+            ORDER BY timestamp DESC
+        `).all(userId, startDate, endDate);
+  }
+
+  getAggregatedTimeByApp(userId: string, startDate: number, endDate: number) {
+    return this.db!.prepare(`
+            SELECT app, platform, SUM(duration_ms) as total_ms
+            FROM heartbeats
+            WHERE user_id = ? AND timestamp BETWEEN ? AND ?
+            GROUP BY app, platform
+            ORDER BY total_ms DESC
+        `).all(userId, startDate, endDate);
+  }
+
+  getDailyActivity(userId: string, startDate: number, endDate: number) {
+    return this.db!.prepare(`
+            SELECT DATE(timestamp / 1000, 'unixepoch') as day,
+                   SUM(duration_ms) as total_ms
+            FROM heartbeats
+            WHERE user_id = ? AND timestamp BETWEEN ? AND ?
+            GROUP BY day
+            ORDER BY day
+        `).all(userId, startDate, endDate);
   }
 
 // CALENDARS

@@ -34,6 +34,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
         getActivityTimeByUser: (userId?: string, limit?: number) => ipcRenderer.invoke('metrics:getActivityByUser', userId, limit),
         getProjectHeatmap: (days?: number) => ipcRenderer.invoke('metrics:getProjectHeatmap', days),
     },
+    hb: {
+        getHeartbeatsForUser: (userId: string|null, startDate: number, endDate: number) => ipcRenderer.invoke('get-heartbeats', userId, startDate, endDate),
+        getAggregatedTimeByApp: (userId: string|null, startDate: number, endDate: number) => ipcRenderer.invoke('get-aggregated-time', userId, startDate, endDate),
+        getDailyActivity: (userId: string|null, startDate: number, endDate: number) => ipcRenderer.invoke('get-daily-activity', userId, startDate, endDate),
+    },
     createTask: (payload: any) => ipcRenderer.invoke("task:create", payload),
     updateTask: (payload: any) => ipcRenderer.invoke("task:update", payload),
     deleteTask: (id: string) => ipcRenderer.invoke("task:delete", id),

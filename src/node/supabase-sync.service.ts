@@ -8,6 +8,8 @@ import {eq} from "drizzle-orm";
 import {v4 as uuidv4} from "uuid";
 import {URL} from "url";
 import dns from "dns/promises";
+import Store from "electron-store";
+const store = new Store();
 
 export class SupabaseSyncService extends EventEmitter {
     private client: SupabaseClient;
@@ -813,11 +815,50 @@ export class SupabaseSyncService extends EventEmitter {
             } catch (err) {
                 this.sendToUI("sync:error", {message: "Failed to pull time entries", error: err});
             }
+        } else if (tabel === 'heartbeats') {
+            const userId = store.get('currentUserId');
+            if (!userId) return;
+            try {
+                const {
+                    data,
+                    error
+                } = await this.client.from("heartbeats").select("*").order("timestamp", {ascending: true});
+                if (error) throw error;
+                if (!Array.isArray(data)) return;
+
+                for (const record of data) {
+                    const local = this.dbService.db.prepare("SELECT * FROM heartbeats WHERE id = ? AND user_id = ?").get(record.id, userId);
+                    if (!local || new Date(record.timestamp).getTime() > new Date(local.timestamp).getTime()) {
+                        this.dbService.db
+                            .prepare(
+                                `INSERT INTO heartbeats (id, user_id, timestamp, duration_ms, source, platform, app, title, metadata, team_id, last_seen)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                                UPDATE SET
+                                    user_id=excluded.user_id,
+                                    timestamp=excluded.timestamp,
+                                    duration_ms=excluded.duration_ms,
+                                    source=excluded.source,
+                                    platform=excluded.platform,
+                                    app=excluded.app,
+                                    title=excluded.title,
+                                    metadata=excluded.metadata,
+                                    team_id=excluded.team_id,
+                                    last_seen=excluded.last_seen`
+                            )
+                            .run(record.id, record.user_id, record.timestamp, record.duration_ms, record.source, record.platform, record.app, record.title, record.metadata, record.team_id, record.last_seen);
+                    }
+                }
+
+                this.sendToUI("sync:pull", {count: data.length});
+                this.sendToUI("sync:success", {message: "Pulled " + data.length + " heartbeats"});
+            } catch (err) {
+                this.sendToUI("sync:error", {message: "Failed to pull heartbeats", error: err});
+            }
         }
     }
 
     async pullAllRemoteUpdates() {
-        const channels = ["tasks", "projects", "teams", "revisions", "attachments", "events", "users", "team_members", "calendar_events"];
+        const channels = ["tasks", "projects", "teams", "revisions", "attachments", "events", "users", "team_members", "calendar_events", "time_entries", "heartbeats"];
         for (const channel of channels) {
             await this.pullRemoteUpdates(channel);
         }

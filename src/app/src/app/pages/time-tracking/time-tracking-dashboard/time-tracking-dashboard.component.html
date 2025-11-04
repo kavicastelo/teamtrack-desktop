@@ -1,0 +1,67 @@
+<mat-card class="dashboard-card">
+  <mat-card-header>
+    <mat-card-title>
+      <span class="title">🕒 Time Tracking Dashboard</span>
+      <span class="subtitle">(Last 7 Days)</span>
+    </mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    <div class="charts-container">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3><mat-icon>pie_chart</mat-icon> Time Distribution by App</h3>
+        </div>
+        <canvas
+          baseChart
+          [data]="pieChartData"
+          [options]="pieChartOptions"
+          [type]="'pie'">
+        </canvas>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3><mat-icon>show_chart</mat-icon> Daily Activity</h3>
+        </div>
+        <canvas
+          baseChart
+          [data]="lineChartData"
+          [options]="lineChartOptions"
+          [type]="'line'">
+        </canvas>
+      </div>
+    </div>
+
+    <div class="table-section">
+      <h3><mat-icon>schedule</mat-icon> Recent Sessions</h3>
+      <table mat-table [dataSource]="dataSource" class="dark-table">
+        <ng-container matColumnDef="timestamp">
+          <th mat-header-cell *matHeaderCellDef>Timestamp</th>
+          <td mat-cell *matCellDef="let element">{{ formatDate(element.timestamp) }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="app">
+          <th mat-header-cell *matHeaderCellDef>App</th>
+          <td mat-cell *matCellDef="let element">
+            <span class="app-name">{{ element.app || 'Unknown' }}</span>
+            <span class="app-platform">({{ element.platform }})</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="title">
+          <th mat-header-cell *matHeaderCellDef>Title</th>
+          <td mat-cell *matCellDef="let element">{{ element.title || 'N/A' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="duration_ms">
+          <th mat-header-cell *matHeaderCellDef>Duration</th>
+          <td mat-cell *matCellDef="let element">{{ formatDuration(element.duration_ms) }}</td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </div>
+  </mat-card-content>
+</mat-card>

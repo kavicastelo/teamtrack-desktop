@@ -6,6 +6,7 @@ import type { HeartbeatService } from "../../node/heartbeat.service";
 import {registerGoogleCalendarIPC} from "./google-calendar-ipc";
 import {GoogleCalendarSyncService} from "../../node/google-calendar-sync.service";
 import {registerMetricsIPC} from "./metrics-ipc";
+import {registerHeartbeatIPC} from "./heartbeat-ips";
 const Store = require('electron-store');
 const store = new Store();
 
@@ -268,4 +269,7 @@ export function registerIPCHandlers(services: {
 
     /** Metrics **/
     registerMetricsIPC(dbService);
+
+    /** Heartbeat **/
+    registerHeartbeatIPC(dbService);
 }

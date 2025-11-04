@@ -51,23 +51,24 @@ export function registerMetricsIPC(dbService: DatabaseService) {
     ipcMain.handle('metrics:getTeamPulse', async (_e, teamId: string) => {
 
         const online = dbService.query(`
-      SELECT user_id, last_seen
-      FROM heartbeats
-      WHERE team_id = ?
-        AND last_seen > ?
-      ORDER BY last_seen DESC
-    `, [teamId, Date.now() - 5 * 60 * 1000]);
+    SELECT user_id, MAX(last_seen) AS last_seen
+    FROM heartbeats
+    WHERE team_id = ?
+      AND last_seen > ?
+    GROUP BY user_id
+    ORDER BY last_seen DESC
+  `, [teamId, Date.now() - 5 * 60 * 1000]);
 
         const throughput = dbService.query(`
-      SELECT date(strftime('%Y-%m-%d', datetime(updated_at / 1000, 'unixepoch'))) AS day,
-             COUNT(*) AS completed
-      FROM tasks
-      WHERE status = 'done'
-        AND project_id IN (SELECT id FROM projects WHERE team_id = ?)
-        AND updated_at > ?
-      GROUP BY day
-      ORDER BY day ASC
-    `, [teamId, Date.now() - 14 * 24 * 60 * 60 * 1000]);
+    SELECT date(strftime('%Y-%m-%d', datetime(updated_at / 1000, 'unixepoch'))) AS day,
+           COUNT(*) AS completed
+    FROM tasks
+    WHERE status = 'done'
+      AND project_id IN (SELECT id FROM projects WHERE team_id = ?)
+      AND updated_at > ?
+    GROUP BY day
+    ORDER BY day ASC
+  `, [teamId, Date.now() - 14 * 24 * 60 * 60 * 1000]);
 
         return { online, throughput };
     });
