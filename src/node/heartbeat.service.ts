@@ -1,3 +1,8 @@
+import {app} from "electron";
+import {getMainWindow} from "../electron/windows/main-window";
+import Store from "electron-store";
+const store = new Store();
+
 export class HeartbeatService {
     private dbService: any;
     private authService: any;
@@ -26,8 +31,33 @@ export class HeartbeatService {
     }
 
     recordHeartbeat(payload?: any) {
-        if (payload && payload.duration_ms) {
-            this.dbService.createHeartbeat(payload);
+        const user = this.authService.getCurrentUser();
+        if (!user) {
+            console.warn('[HeartbeatService] No user, skipping heartbeat.');
+            return;
         }
+
+        if (!payload) {
+            // Default: app-level heartbeat (e.g., user active in your Electron app)
+            payload = {
+                user_id: user.id,
+                timestamp: Date.now(),
+                duration_ms: 15000,  // Matches your interval; adjust as needed
+                source: 'app',
+                platform: 'electron',
+                app: app.getName() || 'MyApp',
+                title: getMainWindow()?.getTitle() || 'Main Window',
+                metadata: {},
+                team_id: this.authService.getCurrentTeam()?.id || null,
+                last_seen: Date.now()
+            };
+        } else {
+            // Ensure user/team for external payloads (e.g., extensions)
+            const userId = store.get('currentUserId');
+            payload.user_id = payload.user_id || user.id;
+            payload.team_id = payload.team_id || this.dbService.userTeams(userId)[0]?.id || null;
+        }
+
+        this.dbService.createHeartbeat(payload);
     }
 }

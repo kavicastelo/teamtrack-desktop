@@ -562,7 +562,7 @@ export class SupabaseSyncService extends EventEmitter {
                                     description=excluded.description,
                                     owner_id=excluded.owner_id,
                                     created_at=excluded.created_at,
-                                    updated_at=excluded.updated_at
+                                    updated_at=excluded.updated_at,
                                     team_id=excluded.team_id`
                             )
                             .run(record.id, record.name, record.description, record.owner_id, record.created_at, record.updated_at, record.team_id);
@@ -829,26 +829,58 @@ export class SupabaseSyncService extends EventEmitter {
             const rows = this.dbService.query("SELECT * FROM revisions WHERE synced = 0 LIMIT 50");
             if (!rows || rows.length === 0) return;
 
-            this.sendToUI("sync:info", {message: "Pushing " + rows.length + " local revisions..."});
+            // Define which object types are considered "background/system"
+            const silentTypes = new Set([
+                'heartbeats',
+                'calendar_events',
+                'time_entries',
+                'events'
+            ]);
+
+            // Separate into user vs system revisions
+            const userRows = rows.filter(r => !silentTypes.has(r.object_type));
+            const backgroundRows = rows.filter(r => silentTypes.has(r.object_type));
+
+            if (userRows.length)
+                this.sendToUI("sync:info", { message: `Pushing ${userRows.length} user revisions...` });
+
+            let backgroundCount = 0;
+
             for (const r of rows) {
                 try {
                     const payload = JSON.parse(r.payload);
-                    const {error} = await this.client.from(r.object_type).upsert(payload, {onConflict: "id"});
+                    const { error } = await this.client.from(r.object_type).upsert(payload, { onConflict: "id" });
 
                     if (!error) {
                         this.dbService.query("UPDATE revisions SET synced = 1 WHERE id = ?", [r.id]);
-                        this.sendToUI("sync:success", {message: "Synced revision: " + r.id});
+                        if (!silentTypes.has(r.object_type)) {
+                            this.sendToUI("sync:success", { message: `Synced ${r.object_type} revision: ${r.id}` });
+                        } else {
+                            backgroundCount++;
+                        }
                     } else {
-                        this.sendToUI("sync:warning", {message: "Failed to sync revision: " + r.id});
+                        if (!silentTypes.has(r.object_type)) {
+                            this.sendToUI("sync:warning", { message: `Failed to sync ${r.object_type} revision: ${r.id}` });
+                        }
                         this.queueRetry(r);
                     }
                 } catch (err) {
-                    this.sendToUI("sync:error", {message: "Failed to sync revision: " + r.id, error: err});
+                    if (!silentTypes.has(r.object_type)) {
+                        this.sendToUI("sync:error", { message: `Failed to sync ${r.object_type} revision: ${r.id}`, error: err });
+                    }
                     this.queueRetry(r);
                 }
             }
+
+            // Summarized feedback for background revisions
+            if (backgroundCount > 0) {
+                this.sendToUI("sync:summary", {
+                    message: `Synced ${backgroundCount} background revisions (${Array.from(silentTypes).join(', ')})`
+                });
+            }
+
         } catch (err) {
-            this.sendToUI("sync:error", {message: "Failed to push local revisions", error: err});
+            this.sendToUI("sync:error", { message: "Failed to push local revisions", error: err });
         }
     }
 
