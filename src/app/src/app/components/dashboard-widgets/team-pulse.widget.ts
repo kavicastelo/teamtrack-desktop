@@ -9,6 +9,7 @@ import {IpcService} from '../../services/ipc.service';
 import {FormsModule} from '@angular/forms';
 import {MatFormField, MatLabel} from '@angular/material/form-field';
 import {MatSelect} from '@angular/material/select';
+import {AuthService} from '../../services/auth.service';
 
 @Component({
   selector: 'app-team-pulse-widget',
@@ -30,7 +31,7 @@ import {MatSelect} from '@angular/material/select';
         <div class="online">
           <div *ngFor="let u of online" class="user" matRipple>
             <div class="status-dot"></div>
-            <div class="user-label">{{ u.user_id }}</div>
+            <div class="user-label">{{ getUsername(u.user_id) }}</div>
           </div>
         </div>
 
@@ -125,10 +126,12 @@ export class TeamPulseWidgetComponent implements OnInit {
   chartOptions = { responsive: true, maintainAspectRatio: false };
   teams: any[] = [];
   teamId: string = '';
+  users: any[] = [];
 
-  constructor(private svc: DashboardService, private ipc: IpcService) {}
+  constructor(private svc: DashboardService, private ipc: IpcService, private auth: AuthService ) {}
   async ngOnInit() {
     await this.loadTeams();
+    await this.loadUsers();
   }
 
   async getTeamPulse(teamId: string) {
@@ -147,8 +150,16 @@ export class TeamPulseWidgetComponent implements OnInit {
     this.teams = await this.ipc.listTeams();
   }
 
+  async loadUsers() {
+    this.users = await this.auth.listLocalUsers();
+  }
+
   onTeamChange(value: any) {
     this.teamId = value;
     this.getTeamPulse(value).then();
+  }
+
+  getUsername(user_id: any) {
+    return  this.users.find((u: any) => u.id === user_id)?.full_name || user_id;
   }
 }

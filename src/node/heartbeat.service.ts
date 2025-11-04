@@ -55,7 +55,7 @@ export class HeartbeatService {
             // Ensure user/team for external payloads (e.g., extensions)
             const userId = store.get('currentUserId');
             payload.user_id = payload.user_id || user.id;
-            payload.team_id = payload.team_id || this.dbService.userTeams(userId)[0]?.id || null;
+            payload.team_id = payload.team_id || this.dbService.teamIds(userId)[0] || null;
         }
 
         this.dbService.createHeartbeat(payload);

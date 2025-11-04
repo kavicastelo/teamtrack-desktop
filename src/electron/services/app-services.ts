@@ -210,7 +210,7 @@ function createDesktopPayload(win: ActiveWindow, startTime: number, duration: nu
             path: win.owner.path,
             processId: win.owner.processId
         },
-        team_id: dbService.userTeams(userId)[0]?.id || null,
+        team_id: dbService.teamIds(userId)[0] || null,
         last_seen: lastSeen
     };
 }
