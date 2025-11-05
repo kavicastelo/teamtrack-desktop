@@ -14,6 +14,7 @@ import {GoogleCalendarSyncService} from "../../node/google-calendar-sync.service
 
 import dotenv from "dotenv";
 import { autoUpdater } from "electron-updater";
+import fs from "fs";
 
 const envPath = app.isPackaged
     ? path.join(process.resourcesPath, "app.asar.unpacked", ".env")
@@ -31,11 +32,16 @@ let activeWindowDetector: ActiveWindowDetectorService;
 let localCollector: LocalCollectorServer;
 let calendarSync: GoogleCalendarSyncService;
 
+let mainWin: BrowserWindow | null = null;
+
 // Desktop activity aggregation state
 let currentSession: { startTime: number; win: ActiveWindow; key: string } | null = null;
 let flushInterval: NodeJS.Timeout | null = null;
 
+const logFile = path.join(app.getPath("userData"), "startup.log");
+
 export async function initializeAppServices(mainWindow: BrowserWindow) {
+    mainWin = mainWindow;
     const key =
         (store.get("dbKey") as string) ||
         (() => {
@@ -93,12 +99,19 @@ export async function initializeAppServices(mainWindow: BrowserWindow) {
 export async function checkForUpdates() {
     await autoUpdater.checkForUpdatesAndNotify();
 
-    autoUpdater.on("checking-for-update", () => console.log("Checking for updates..."));
-    autoUpdater.on("update-available", info => console.log("Update available:", info.version));
-    autoUpdater.on("update-not-available", () => console.log("No update available."));
-    autoUpdater.on("error", err => console.error("Update error:", err));
+    autoUpdater.on("checking-for-update", () => fs.writeFileSync(logFile, "Checking for updates...\n"));
+    autoUpdater.on("update-available", info => {
+        sendToUI('sync:info', {message: "Update available: " + info.version});
+        fs.writeFileSync(logFile, "Update available: " + info.version + "\n")
+    });
+    autoUpdater.on("update-not-available", () => fs.writeFileSync(logFile, "No update available."));
+    autoUpdater.on("error", err => {
+        sendToUI('sync:error', {message: "Update error: " + err});
+        fs.writeFileSync(logFile, "Update error: " + err + "\n")
+    });
     autoUpdater.on("update-downloaded", () => {
-        console.log("Update downloaded. Installing on quit...");
+        sendToUI('sync:info', {message: "Update downloaded. Installing on quit..."});
+        fs.writeFileSync(logFile, "Update downloaded. Installing on quit...");
     });
 }
 
@@ -213,4 +226,17 @@ function createDesktopPayload(win: ActiveWindow, startTime: number, duration: nu
         team_id: dbService.teamIds(userId)[0] || null,
         last_seen: lastSeen
     };
+}
+
+function sendToUI(event: string, payload: any) {
+    try {
+        if (!mainWin || mainWin.isDestroyed()) {
+            console.warn(`Cannot send ${event}: mainWindow is not available.`);
+            return;
+        }
+
+        mainWin.webContents.send(event, payload);
+    } catch (err) {
+        console.error(`Failed to send event '${event}' to UI:`, err);
+    }
 }
