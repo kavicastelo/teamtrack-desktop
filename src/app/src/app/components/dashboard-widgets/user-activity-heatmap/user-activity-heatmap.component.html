@@ -1,0 +1,43 @@
+<div class="heatmap-card">
+  <div class="header">
+    <div class="title">User Activity Heatmap</div>
+    <div class="subtitle">last {{ days }} days</div>
+  </div>
+
+  <div *ngIf="loading" class="loading">Loading…</div>
+
+  <div *ngIf="!loading">
+    <!-- hourly summary row -->
+    <div class="hour-row">
+      <div class="hour-cell label">Hour</div>
+      <div class="hour-cell" *ngFor="let h of hours">
+        <div class="hour-label">{{ h }}</div>
+      </div>
+    </div>
+
+    <!-- weekday x hour grid -->
+    <div class="grid">
+      <div class="row" *ngFor="let wd of weekdays">
+        <div class="cell label">{{ wd.name }}</div>
+        <div
+          class="cell hour"
+          *ngFor="let h of hours"
+          [style.background]="
+            'rgba(144,202,249,' + opacityFor(data.weekdayHourGrid?.[wd.id]?.[h] || 0) + ')'
+          "
+          matTooltip="{{ tooltipFor(wd.id, h) }}"
+        >
+          <span class="count">{{ data.weekdayHourGrid?.[wd.id]?.[h] || '' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- optional hourly totals -->
+    <div class="totals-row">
+      <div class="label">Totals</div>
+      <div class="total-cell" *ngFor="let h of hours">
+        {{ data.totalsByHour?.[h] || 0 }}
+      </div>
+    </div>
+  </div>
+</div>

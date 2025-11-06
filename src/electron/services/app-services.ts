@@ -15,6 +15,7 @@ import {GoogleCalendarSyncService} from "../../node/google-calendar-sync.service
 import dotenv from "dotenv";
 import { autoUpdater } from "electron-updater";
 import fs from "fs";
+import {HeartbeatSummaryJob} from "../../node/db/aggregators/heartbeat-summary-job";
 
 const envPath = app.isPackaged
     ? path.join(process.resourcesPath, "app.asar.unpacked", ".env")
@@ -31,6 +32,7 @@ let idleMonitor: IdleMonitorService;
 let activeWindowDetector: ActiveWindowDetectorService;
 let localCollector: LocalCollectorServer;
 let calendarSync: GoogleCalendarSyncService;
+let hbJob: HeartbeatSummaryJob;
 
 let mainWin: BrowserWindow | null = null;
 
@@ -91,9 +93,12 @@ export async function initializeAppServices(mainWindow: BrowserWindow) {
     // Wire up heartbeat sources
     attachHeartbeatListeners();
 
+    hbJob = new HeartbeatSummaryJob(dbService, 5 * 60 * 1000);
+    hbJob.start();
+
     console.log("[Main] Services initialized.");
 
-    return { dbService, syncService, authService, heartbeatService, calendarSync };
+    return { dbService, syncService, authService, heartbeatService, calendarSync, hbJob };
 }
 
 export async function checkForUpdates() {
@@ -137,6 +142,7 @@ export async function shutdownServices() {
         await syncService?.stop();
         await dbService?.close();
         await calendarSync?.stop();
+        await hbJob?.stop();
     } catch (err) {
         console.error("[Main] Shutdown error:", err);
     }

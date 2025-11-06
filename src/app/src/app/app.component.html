@@ -36,7 +36,7 @@
         <mat-icon>people</mat-icon>
         <span>Users</span>
       </a>
-      <a mat-list-item routerLink="/analytics" routerLinkActive="active">
+      <a *ngIf="isAdmin" mat-list-item routerLink="/analytics" routerLinkActive="active">
         <mat-icon>insights</mat-icon>
         <span>Analytics</span>
       </a>

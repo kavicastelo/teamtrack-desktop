@@ -11,6 +11,7 @@ export const routes: Routes = [
   { path: 'project/:id', loadComponent: () => import('./pages/projects/project-view/project-view.component').then(m => m.ProjectViewComponent) },
   { path: 'files', loadComponent: () => import('./pages/files/files-list/files-list.component').then(m => m.FilesListComponent) },
   { path: 'time-tracking', loadComponent: () => import('./pages/time-tracking/time-tracking-dashboard/time-tracking-dashboard.component').then(m => m.TimeTrackingDashboardComponent) },
+  { path: 'analytics', loadComponent: () => import('./pages/analytics/analytics-dashboard/analytics-dashboard.component').then(m => m.AnalyticsDashboardComponent) },
   { path: 'auth/invite-complete', loadComponent: () => import('./components/invite-complete/invite-complete.component').then(m => m.InviteCompleteComponent) },
   { path: 'auth/register', loadComponent: () => import('./pages/auth/auth-register/auth-register.component').then(m => m.AuthRegisterComponent) },
   { path: 'auth/login', loadComponent: () => import('./pages/auth/auth-login/auth-login.component').then(m => m.AuthLoginComponent) },

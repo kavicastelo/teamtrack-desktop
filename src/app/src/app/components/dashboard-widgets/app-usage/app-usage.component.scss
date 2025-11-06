@@ -1,0 +1,8 @@
+.chart-card {
+  background: #1e1e1e;
+  color: #e0e0e0;
+  padding: 12px;
+  border-radius: 10px;
+  h3 { color: #90caf9; margin-bottom: 10px; }
+  .list { margin-top: 12px; .row { display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed rgba(255,255,255,0.03); } .app { font-weight:500 } .meta { color:#9e9e9e } }
+}

@@ -1,0 +1,92 @@
+.heatmap-card {
+  background: #141414;
+  color: #e0e0e0;
+  padding: 12px;
+  border-radius: 10px;
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .title {
+    font-weight: 600;
+    color: #90caf9;
+  }
+
+  .subtitle {
+    color: #9e9e9e;
+    font-size: 0.9rem;
+  }
+
+  .hour-row {
+    display: flex;
+    margin-bottom: 8px;
+    gap: 6px;
+
+    .hour-cell {
+      width: 28px;
+      text-align: center;
+      color: #9e9e9e;
+    }
+
+    .label {
+      width: 60px;
+      text-align: left;
+    }
+  }
+
+  .grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .cell {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.02);
+    color: #e0e0e0;
+    font-size: 0.8rem;
+  }
+
+  .label {
+    width: 60px;
+    text-align: left;
+    color: #bdbdbd;
+    font-size: 0.9rem;
+  }
+
+  .totals-row {
+    display: flex;
+    margin-top: 8px;
+    align-items: center;
+    gap: 6px;
+
+    .label {
+      width: 60px;
+    }
+
+    .total-cell {
+      width: 28px;
+      text-align: center;
+      color: #90caf9;
+    }
+  }
+
+  .loading {
+    color: #90caf9;
+  }
+}

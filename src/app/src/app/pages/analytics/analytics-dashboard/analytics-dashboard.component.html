@@ -1,0 +1,102 @@
+<div class="dashboard-container" *ngIf="!loading(); else loadingTpl">
+  <mat-grid-list cols="3" rowHeight="100px" gutterSize="16px" class="summary-grid">
+    <mat-grid-tile *ngFor="let card of [
+      { label: 'Active (24h)', value: orgSummary?.active24h },
+      { label: 'Active (7d)', value: orgSummary?.active7d },
+      { label: 'Total Users', value: orgSummary?.totalUsers },
+      { label: 'Tasks', value: orgSummary?.totalTasks },
+      { label: 'Completed', value: orgSummary?.completedTasks },
+      { label: 'Overdue', value: orgSummary?.overdueTasks }
+    ]">
+      <mat-card class="summary-card">
+        <div class="metric-label">{{ card.label }}</div>
+        <div class="metric-value">{{ card.value ?? 0 }}</div>
+      </mat-card>
+    </mat-grid-tile>
+  </mat-grid-list>
+
+  <mat-card class="chart-card">
+    <h3>Task Throughput (30 days)</h3>
+    <canvas
+      #throughputChart
+      baseChart
+      [data]="lineChartData"
+      [options]="lineChartOptions"
+      type="line">
+    </canvas>
+  </mat-card>
+
+  <mat-card class="chart-card">
+    <h3>Team Utilization</h3>
+    <canvas
+      #teamChart
+      baseChart
+      [data]="barChartData"
+      [options]="barChartOptions"
+      type="bar">
+    </canvas>
+  </mat-card>
+
+  <mat-card class="chart-card">
+    <h3>Project Load</h3>
+    <canvas
+      #projectChart
+      baseChart
+      [data]="stackedBarChartData"
+      [options]="stackedBarChartOptions"
+      type="bar">
+    </canvas>
+  </mat-card>
+
+  <mat-card class="chart-card">
+    <h3>Top Performers</h3>
+    <table mat-table [dataSource]="topPerformers" class="mat-elevation-z2 performer-table">
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>User</th>
+        <td mat-cell *matCellDef="let row">{{ row.full_name }}</td>
+      </ng-container>
+      <ng-container matColumnDef="completed">
+        <th mat-header-cell *matHeaderCellDef>Completed</th>
+        <td mat-cell *matCellDef="let row">{{ row.completed }}</td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="['name', 'completed']"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['name', 'completed']"></tr>
+    </table>
+  </mat-card>
+
+  <!-- ⏰ Focus Heatmap -->
+  <div class="chart-card">
+    <h3>Focus Hours Heatmap (7 days)</h3>
+    <div class="grid grid-cols-12 gap-1">
+      <div
+        *ngFor="let h of focusHeatmap"
+        class="p-2 text-center rounded"
+        [style.background]="
+            'rgba(144,202,249,' + (h.events / 10) + ')'
+          ">
+        {{ h.hour }}h
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="admin-advanced-grid">
+  <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+    <mat-form-field appearance="fill">
+      <mat-label>User</mat-label>
+      <mat-select [(ngModel)]="selectedUserId">
+        <mat-option [value]="null">All Users</mat-option>
+        <mat-option *ngFor="let u of users" [value]="u.id">
+          {{ u.full_name || u.email }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+    <button mat-flat-button color="primary" (click)="forceRefreshSummaries()" [disabled]="!selectedUserId">Force Refresh</button>
+  </div>
+  <app-user-activity-heatmap [userId]="selectedUserId" [days]="14" [perUserGrid]="true"></app-user-activity-heatmap>
+  <app-usage-chart [days]="14" [limit]="12" [userId]="selectedUserId"></app-usage-chart>
+</div>
+
+<ng-template #loadingTpl>
+  <div class="loading text-blue-400 text-center p-8">Loading analytics...</div>
+</ng-template>

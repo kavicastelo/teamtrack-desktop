@@ -7,6 +7,8 @@ import {registerGoogleCalendarIPC} from "./google-calendar-ipc";
 import {GoogleCalendarSyncService} from "../../node/google-calendar-sync.service";
 import {registerMetricsIPC} from "./metrics-ipc";
 import {registerHeartbeatIPC} from "./heartbeat-ips";
+import {registerAdminAnalyticsIPC} from "./register-admin-analytics-ipc";
+import {HeartbeatSummaryJob} from "../../node/db/aggregators/heartbeat-summary-job";
 const Store = require('electron-store');
 const store = new Store();
 
@@ -16,8 +18,9 @@ export function registerIPCHandlers(services: {
     authService: AuthService;
     heartbeatService: HeartbeatService;
     calendarSync: GoogleCalendarSyncService;
+    hbJob: HeartbeatSummaryJob;
 }) {
-    const { dbService, syncService, authService, heartbeatService, calendarSync  } = services;
+    const { dbService, syncService, authService, heartbeatService, calendarSync, hbJob  } = services;
     const currentUserId = store.get('currentUserId');
 
     /** Authentication */
@@ -110,6 +113,53 @@ export function registerIPCHandlers(services: {
             payload: user,
         })
         return user;
+    });
+
+    /** Team Members */
+    ipcMain.handle("teamMember:list", (_e, teamId) => dbService.listTeamMembers(teamId));
+    ipcMain.handle("teamMember:create", async (_e, payload) => {
+        const teamMember = dbService.createTeamMember(payload)
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "team_member:create",
+            object_type: "team_member",
+            object_id: payload.id,
+            payload: teamMember,
+        })
+        return teamMember;
+    });
+    ipcMain.handle("teamMember:update", async (_e, payload) => {
+        const teamMember = dbService.updateTeamMember(payload)
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "team_member:update",
+            object_type: "team_member",
+            object_id: payload.id,
+            payload: teamMember,
+        })
+        return teamMember;
+    });
+    ipcMain.handle('teamMember:update-role', async (_e, payload) => {
+        const teamMember = dbService.updateTeamMemberRole(payload)
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "team_member:update_role",
+            object_type: "team_member",
+            object_id: payload.id,
+            payload: teamMember,
+        })
+        return teamMember;
+    });
+    ipcMain.handle("teamMember:delete", async (_e, teamMemberId: string) => {
+        const teamMember = dbService.deleteTeamMember(teamMemberId)
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "team_member:delete",
+            object_type: "team_member",
+            object_id: teamMemberId,
+            payload: teamMember,
+        })
+        return teamMember;
     });
 
     /** Tasks */
@@ -269,6 +319,7 @@ export function registerIPCHandlers(services: {
 
     /** Metrics **/
     registerMetricsIPC(dbService);
+    registerAdminAnalyticsIPC(dbService, hbJob);
 
     /** Heartbeat **/
     registerHeartbeatIPC(dbService);

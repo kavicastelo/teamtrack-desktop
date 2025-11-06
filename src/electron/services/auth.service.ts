@@ -95,14 +95,17 @@ export class AuthService extends EventEmitter {
 
             const userId = session.user?.id;
             if (userId) {
-                const now = Date.now();
-                this.dbService.createUser({
-                    id: userId,
-                    email: session.user.email,
-                    role: 'member',
-                    invited_at: now,
-                    updated_at: now
-                });
+                const existingUser = await this.getUserById(userId);
+                if (!existingUser) {
+                    const now = Date.now();
+                    this.dbService.createUser({
+                        id: userId,
+                        email: session.user.email,
+                        role: 'member',
+                        invited_at: now,
+                        updated_at: now
+                    });
+                }
                 store.set('currentUserId', userId);
             }
 
