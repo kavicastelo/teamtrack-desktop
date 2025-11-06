@@ -704,7 +704,7 @@ export class SupabaseSyncService extends EventEmitter {
                                     updated_at=excluded.updated_at,
                                     invited_at=excluded.invited_at,
                                     google_refresh_token=excluded.google_refresh_token,
-                                    last_calendar_sync=excluded.last_calendar_sync
+                                    last_calendar_sync=excluded.last_calendar_sync,
                                     weekly_capacity_hours=excluded.weekly_capacity_hours`
                             )
                             .run(record.id, record.email, record.full_name, record.role, record.avatar_url, record.timezone, record.calendar_sync_enabled, record.google_calendar_id, record.available_times, record.updated_at, record.invited_at, record.google_refresh_token, record.last_calendar_sync, record.weekly_capacity_hours);
@@ -827,7 +827,8 @@ export class SupabaseSyncService extends EventEmitter {
                 if (!Array.isArray(data)) return;
 
                 for (const record of data) {
-                    const local = this.dbService.db.prepare("SELECT * FROM heartbeats WHERE id = ? AND user_id = ?").get(record.id, userId);
+                    // const local = this.dbService.db.prepare("SELECT * FROM heartbeats WHERE id = ? AND user_id = ?").get(record.id, userId);
+                    const local = this.dbService.db.prepare("SELECT * FROM heartbeats WHERE id = ?").get(record.id);
                     if (!local || new Date(record.timestamp).getTime() > new Date(local.timestamp).getTime()) {
                         this.dbService.db
                             .prepare(

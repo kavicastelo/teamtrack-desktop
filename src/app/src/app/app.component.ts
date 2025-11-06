@@ -33,6 +33,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   currentSectionTitle = 'Dashboard';
   userProfile: any;
+  isAdmin = false;
 
   constructor(
     private ipc: IpcService,
@@ -152,11 +153,20 @@ export class AppComponent implements OnInit, OnDestroy {
       this.auth.setUser(session).then(async (r) => {
         r.subscribe(async (r) => {
           this.userProfile = r;
+          await this.loadLocalUsers();
           if (!r && !window.location.href.includes('auth/callback')) {
             await this.router.navigate(['/auth/login']);
           }
         });
       });
+    });
+  }
+
+  private async loadLocalUsers() {
+    await this.auth.listLocalUsers().then(r => {
+      const currentUser = r.find((user:any) => user.id === this.userProfile.user.id);
+      this.isAdmin = currentUser.role === 'admin';
+      if (this.isAdmin) localStorage.setItem('isAdmin', this.isAdmin.toString());
     });
   }
 

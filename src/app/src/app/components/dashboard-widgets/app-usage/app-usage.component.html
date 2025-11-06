@@ -1,0 +1,11 @@
+<mat-card class="chart-card">
+  <h3>Top Apps ({{ days }} days)</h3>
+  <canvas baseChart [data]="barData" [options]="barOptions" type="bar"></canvas>
+
+  <div class="list">
+    <div *ngFor="let row of data" class="row">
+      <div class="app">{{ row.app }}</div>
+      <div class="meta">{{ row.minutes }} min • {{ row.events }} events</div>
+    </div>
+  </div>
+</mat-card>

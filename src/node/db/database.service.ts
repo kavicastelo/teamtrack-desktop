@@ -5,6 +5,7 @@ import crypto from "crypto";
 import os from "os";
 import path from "path";
 import {v4 as uuidv4} from "uuid";
+import {ensureHeartbeatSummarySchema} from "./migrations/heartbeat-summary.migration";
 
 const ALGO = "aes-256-gcm";
 
@@ -35,29 +36,6 @@ export class DatabaseService {
   constructor(opts: { dbPath: string; encryptionKey: string }) {
     this.encryptedPath = opts.dbPath;
     this.key = crypto.createHash("sha256").update(opts.encryptionKey).digest();
-  }
-
-  async open() {
-    this.tmpPath = path.join(os.tmpdir(), `teamtrack-${uuidv4()}.db`);
-
-    if (fs.existsSync(this.encryptedPath)) {
-      try {
-        const encrypted = fs.readFileSync(this.encryptedPath);
-        const plain = decryptBuffer(encrypted, this.key);
-        fs.writeFileSync(this.tmpPath, plain, { mode: 0o600 });
-        console.log("[DB] Decrypted existing DB");
-      } catch (err) {
-        console.warn("[DB] Failed to decrypt — creating new DB:", err);
-      }
-    } else {
-      console.log("[DB] No existing DB found — creating new");
-    }
-
-    this.db = new Database(this.tmpPath, { verbose: (message: unknown, ...additionalArgs: unknown[]) => {
-        // console.log("[DB]", message, ...additionalArgs);
-      } });
-    this.orm = drizzle(this.db);
-    await this.ensureSchema();
   }
 
   private async ensureSchema() {
@@ -181,6 +159,12 @@ export class DatabaseService {
                                               last_seen INTEGER
       );
 
+      CREATE INDEX IF NOT EXISTS idx_heartbeats_timestamp ON heartbeats(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_heartbeats_user ON heartbeats(user_id);
+      CREATE INDEX IF NOT EXISTS idx_heartbeats_team ON heartbeats(team_id);
+      CREATE INDEX IF NOT EXISTS idx_heartbeats_user_ts ON heartbeats(user_id, timestamp);
+      CREATE INDEX IF NOT EXISTS idx_heartbeats_app_ts ON heartbeats(app, timestamp);
+
       CREATE TABLE IF NOT EXISTS time_entries (
                                                 id TEXT PRIMARY KEY,
                                                 user_id TEXT,
@@ -193,9 +177,38 @@ export class DatabaseService {
     `);
   }
 
+  async open() {
+    this.tmpPath = path.join(os.tmpdir(), `teamtrack-${uuidv4()}.db`);
+
+    if (fs.existsSync(this.encryptedPath)) {
+      try {
+        const encrypted = fs.readFileSync(this.encryptedPath);
+        const plain = decryptBuffer(encrypted, this.key);
+        fs.writeFileSync(this.tmpPath, plain, { mode: 0o600 });
+        console.log("[DB] Decrypted existing DB");
+      } catch (err) {
+        console.warn("[DB] Failed to decrypt — creating new DB:", err);
+      }
+    } else {
+      console.log("[DB] No existing DB found — creating new");
+    }
+
+    this.db = new Database(this.tmpPath, { verbose: (message: unknown, ...additionalArgs: unknown[]) => {
+        // console.log("[DB]", message, ...additionalArgs);
+      } });
+    this.orm = drizzle(this.db);
+    await this.ensureSchema();
+    await ensureHeartbeatSummarySchema(this.db);
+  }
+
   getOrm() {
     if (!this.orm) throw new Error("DB not initialized");
     return this.orm;
+  }
+
+  getDb() {
+    if (!this.db) throw new Error("DB not initialized");
+    return this.db;
   }
 
   async close() {
@@ -586,37 +599,17 @@ export class DatabaseService {
     return this.db!.prepare(`SELECT * FROM users`).all();
   }
 
-  public createTeamMember(payload: any) {
-    const id = payload.id || uuidv4();
-    payload.id = id;
-    const now = Date.now();
-    payload.created_at = now;
-    this.db!.prepare(`
-    INSERT INTO team_members (id, team_id, user_id, role, created_at)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(id, payload.team_id, payload.user_id, payload.role, now);
-
-    this.db!.prepare(`
-    INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
-    VALUES (?, ?, ?, ?, ?, ?, 0)
-  `).run(uuidv4(), 'team_members', id, 1, JSON.stringify(payload), now);
-
-    return { id, ...payload, created_at: now };
-  }
-
   public updateUserRole(payload: any) {
     const now = Date.now();
     this.db!.prepare(`
       UPDATE users SET role=? WHERE id=?
     `).run(payload.role, payload.userId);
-    return { ...payload, updated_at: now };
-  }
 
-  public updateTeamMemberRole(payload: any) {
-    const now = Date.now();
     this.db!.prepare(`
-      UPDATE team_members SET role=? WHERE team_id=? AND user_id=?
-    `).run(payload.role, payload.team_id, payload.user_id);
+      INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+      VALUES (?, ?, ?, ?, ?, ?, 0)
+    `).run(uuidv4(), 'users', payload.userId, 1, JSON.stringify(payload), now);
+
     return { ...payload, updated_at: now };
   }
 
@@ -625,6 +618,76 @@ export class DatabaseService {
     this.db!.prepare(`
       UPDATE users SET full_name=?, avatar_url=?, timezone=?, weekly_capacity_hours=?, google_calendar_id=?, calendar_sync_enabled=?, available_times=? WHERE id=?
     `).run(payload.full_name, payload.avatar_url, payload.timezone, payload.weekly_capacity_hours, payload.google_calendar_id, payload.calendar_sync_enabled, payload.available_times, payload.id);
+
+    this.db!.prepare(`
+      INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+      VALUES (?, ?, ?, ?, ?, ?, 0)
+    `).run(uuidv4(), 'users', payload.id, 1, JSON.stringify(payload), now);
+
+    return { ...payload, updated_at: now };
+  }
+
+// TEAM MEMBERS
+  public createTeamMember(payload: any) {
+    const id = payload.id || uuidv4();
+    payload.id = id;
+    const now = Date.now();
+    payload.created_at = now;
+    this.db!.prepare(`
+      INSERT INTO team_members (id, team_id, user_id, role, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(id, payload.team_id, payload.user_id, payload.role, now);
+
+    this.db!.prepare(`
+      INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+      VALUES (?, ?, ?, ?, ?, ?, 0)
+    `).run(uuidv4(), 'team_members', id, 1, JSON.stringify(payload), now);
+
+    return { id, ...payload, created_at: now };
+  }
+
+  public updateTeamMemberRole(payload: any) {
+    const now = Date.now();
+    this.db!.prepare(`
+      UPDATE team_members SET role=? WHERE team_id=? AND user_id=?
+    `).run(payload.role, payload.team_id, payload.user_id);
+
+    this.db!.prepare(`
+      INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+      VALUES (?, ?, ?, ?, ?, ?, 0)
+    `).run(uuidv4(), 'team_members', payload.id, 1, JSON.stringify(payload), now);
+
+    return { ...payload, updated_at: now };
+  }
+
+  public updateTeamMember(payload: any) {
+    const now = Date.now();
+    this.db!.prepare(`
+      UPDATE team_members SET role=? WHERE team_id=? AND user_id=?
+    `).run(payload.role, payload.team_id, payload.user_id);
+
+    this.db!.prepare(`
+      INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+      VALUES (?, ?, ?, ?, ?, ?, 0)
+    `).run(uuidv4(), 'team_members', payload.id, 1, JSON.stringify(payload), now);
+
+    return { ...payload, updated_at: now };
+  }
+
+  public listTeamMembers(teamId: string) {
+    if (teamId)
+      return this.db!.prepare(`SELECT tm.*, u.full_name, u.email FROM team_members tm
+                             LEFT JOIN users u ON tm.user_id = u.id
+                             WHERE tm.team_id = ?`).all(teamId);
+    return this.db!.prepare(`SELECT tm.*, u.full_name, u.email FROM team_members tm
+                             LEFT JOIN users u ON tm.user_id = u.id`).all();
+  }
+
+  public deleteTeamMember(payload: any) {
+    const now = Date.now();
+    this.db!.prepare(`
+      DELETE FROM team_members WHERE team_id=? AND user_id=?
+    `).run(payload.team_id, payload.user_id);
     return { ...payload, updated_at: now };
   }
 

@@ -13,6 +13,7 @@ declare global {
       createEvent(payload: any): Promise<any>;
       deleteEvent(payload: any): Promise<any>;
     };
+    admin: any;
   }
 }
 
@@ -156,5 +157,33 @@ export class IpcService {
   }
   async deleteCalendarEvent(payload: any) {
     return window.electronAPI.calendarAPI.deleteEvent(payload);
+  }
+
+  async orgSummary() {
+    return window.electronAPI.admin.orgSummary();
+  }
+  async taskThroughPut() {
+    return window.electronAPI.admin.taskThroughPut();
+  }
+  async topPerformance() {
+    return window.electronAPI.admin.topPerformance();
+  }
+  async teamUtilization() {
+    return window.electronAPI.admin.teamUtilization();
+  }
+  async projectLoad() {
+    return window.electronAPI.admin.projectLoad();
+  }
+  async focusHeatmap() {
+    return window.electronAPI.admin.focusHeatmap();
+  }
+  async userActivityHeatMap(userId?: string, days?: number, perUserGrid?: boolean) {
+    return window.electronAPI.admin.userActivityHeatMap(userId, days, perUserGrid);
+  }
+  async appUsage(days?: number, limit?: number, userId?: string) {
+    return window.electronAPI.admin.appUsage(days, limit, userId);
+  }
+  async forceRefreshSummaries() {
+    return window.electronAPI.admin.forceRefreshSummaries();
   }
 }

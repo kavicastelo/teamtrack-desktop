@@ -22,6 +22,7 @@ import {
   MatTable
 } from '@angular/material/table';
 import {AuthService} from '../../../services/auth.service';
+import {TeamMemberService} from '../../../services/team-member.service';
 
 @Component({
   selector: 'app-team-edit',
@@ -59,6 +60,7 @@ export class TeamEditComponent implements OnInit {
   private snack = inject(MatSnackBar);
   private ipc = inject(IpcService);
   public auth = inject(AuthService);
+  public tm = inject(TeamMemberService);
 
   form!: FormGroup;
   isLoading = signal(false);
@@ -120,12 +122,7 @@ export class TeamEditComponent implements OnInit {
 
   async loadMembers() {
     try {
-      const result = await this.ipc.rawQuery(
-        `SELECT tm.*, u.full_name, u.email FROM team_members tm
-         LEFT JOIN users u ON tm.user_id = u.id
-         WHERE tm.team_id = ?`,
-        [this.teamId]
-      );
+      const result = await this.tm.listTeamMembers(this.teamId);
       this.members.set(result || []);
     } catch (err) {
       console.error(err);
@@ -162,14 +159,11 @@ export class TeamEditComponent implements OnInit {
   async addMember(userId: string, role: string) {
     if (!this.teamId) return this.snack.open('Save the team first', 'OK');
     try {
-      const id = this.createUuidv4();
-      const now = Date.now();
-      await this.ipc.rawQuery(
-        `INSERT INTO team_members (id, team_id, user_id, role, created_at)
-       VALUES (?, ?, ?, ?, ?)`,
-        [id, this.teamId, userId, role, now]
-      );
-      await this.loadMembers();
+      const payload = { team_id: this.teamId, user_id: userId, role: role };
+      await this.tm.createTeamMember(payload).then(async () => {
+        await this.loadMembers();
+      });
+      this.snack.open('Member added', 'OK', { duration: 2000 });
       return; // add this return statement
     } catch (err) {
       console.error(err);
@@ -180,20 +174,13 @@ export class TeamEditComponent implements OnInit {
 
   async removeMember(id: string) {
     try {
-      await this.ipc.rawQuery(`DELETE FROM team_members WHERE id = ?`, [id]);
-      await this.loadMembers();
+      await this.tm.deleteTeamMember(id).then(()=>{
+        this.loadMembers();
+      });
       this.snack.open('Member removed', 'OK', { duration: 2000 });
     } catch (err) {
       console.error(err);
       this.snack.open('Failed to remove member', 'Dismiss', { duration: 3000 });
     }
-  }
-
-  createUuidv4(): string {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = (Math.random() * 16) | 0;
-      const v = c === 'x' ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
-    });
   }
 }
