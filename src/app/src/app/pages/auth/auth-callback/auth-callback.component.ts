@@ -33,7 +33,13 @@ export class AuthCallbackComponent implements OnInit {
       const session = await window.electronAPI.auth.handleCallback(url);
       if (session?.user) {
         this.snack.open('Signed in successfully', 'OK', { duration: 2000 });
-        await this.zone.run(() => this.router.navigate(['/auth/register']));
+        if (session.user.user_metadata.full_name) {
+          window.location.reload();
+          await this.zone.run(() => this.router.navigate(['/tasks']));
+          return;
+        } else {
+          await this.zone.run(() => this.router.navigate(['/auth/register']));
+        }
       } else {
         throw new Error('No session received');
       }

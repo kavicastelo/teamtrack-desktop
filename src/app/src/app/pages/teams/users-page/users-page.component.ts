@@ -230,15 +230,13 @@ export class UsersPageComponent implements OnInit {
   users: any[] = [];
   columns = ['avatar', 'email', 'role', 'team', 'actions'];
 
+  checking = true;
+
   async ngOnInit() {
-    await this.authService.user$.subscribe(async (s) => {
-      if (!s?.user) return;
-      this.currentSession = s.user;
-
-      await this.refresh();
-
-      this.currentUser = this.users.find(u => u.id === s.user.id);
-    });
+    this.currentSession = await this.authService.session();
+    this.currentUser = await this.authService.user();
+    if (!this.currentUser) return;
+    await this.refresh();
   }
 
   async refresh() {
