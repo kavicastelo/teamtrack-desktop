@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import {Component, OnInit, OnDestroy, effect} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -78,7 +78,7 @@ import { AuthService } from '../../../services/auth.service';
   `]
 })
 export class AuthRegisterComponent implements OnInit, OnDestroy {
-  session: any = null;
+  user: any = null;
   saving = false;
   error: string | null = null;
   checking = true;
@@ -98,43 +98,31 @@ export class AuthRegisterComponent implements OnInit, OnDestroy {
       timezone: [''],
       weekly_capacity_hours: [0, [Validators.min(0), Validators.max(168)]],
     });
-  }
 
-  async ngOnInit() {
-    try {
+    effect(() => {
       setTimeout(() => this.checking = false, 1000);
-      await this.auth.session$.subscribe(async (s) => {
-        this.session = s;
-        if (!s || !s.user) {
-          console.warn('[Register] No user session found — redirecting to login');
-          // await this.router.navigate(['/auth/login']);
-          return;
+      const session = this.auth.user();
+      if (session) {
+        this.user = session;
+        this.profileForm.patchValue({ email: session.email });
+        this.profileForm.patchValue({ full_name: session.full_name });
+        this.profileComplete = !!session.full_name && !!session.email;
+
+        if (this.profileComplete) {
+          // Already has full name — skip registration
+          this.router.navigate(['/tasks']).then();
         }
-
-        // Prefill email
-        this.profileForm.patchValue({ email: s.user.email });
-
-        // Check if profile already complete
-        const profile = s.user
-        if (profile?.full_name) {
-          this.profileComplete = true;
-          // Delay just for UX
-          setTimeout(() => this.router.navigate(['/tasks']), 800);
-        }
-      });
-
-    } catch (err) {
-      console.error('[Register] init error', err);
-      this.error = 'Failed to load session.';
-    } finally {
+      }
       this.checking = false;
-    }
+    });
   }
+
+  async ngOnInit() {}
 
   ngOnDestroy() {}
 
   async completeRegistration() {
-    if (!this.session?.user) {
+    if (!this.user) {
       this.error = 'No session found.';
       return;
     }
@@ -143,18 +131,17 @@ export class AuthRegisterComponent implements OnInit, OnDestroy {
     this.saving = true;
     try {
       const payload = {
-        id: this.session.user.id,
-        email: this.session.user.email,
+        id: this.user.id,
+        email: this.user.email,
         full_name: this.profileForm.value.full_name,
         timezone: this.profileForm.value.timezone || null,
-        weekly_capacity_hours: this.profileForm.value.weekly_capacity_hours || 0
+        weekly_capacity_hours: this.profileForm.value.weekly_capacity_hours || 0,
       };
 
       await this.auth.updateProfile(payload);
       this.snack.open('Profile updated successfully!', 'OK', { duration: 2000 });
-      await this.router.navigate(['/tasks']);
+      this.router.navigate(['/tasks']);
     } catch (err: any) {
-      console.error('[Register] updateProfile failed', err);
       this.error = err?.message || 'Failed to update profile';
     } finally {
       this.saving = false;

@@ -48,6 +48,8 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
   busySlots: { start: number; end: number }[] = [];
   freeSlots: { start: number; end: number }[] = [];
 
+  checking = true;
+
   constructor(
     private fb: FormBuilder,
     private ipc: IpcService,
@@ -66,12 +68,10 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
-    await this.auth.user$.subscribe(async (s) => {
-      if (!s?.user) return;
-
-      this.user = s.user;
-      this.patchProfile(s.user);
-    });
+    this.user = await this.auth.user();
+    setTimeout(() => this.checking = false, 1000);
+    if (!this.user) return;
+    this.patchProfile(this.user);
 
     // Optionally load saved availability from supabase
     // await this.loadRemoteProfile();
@@ -88,12 +88,12 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
   }
 
   patchProfile(user: any) {
-    this.avatarUrl = user.user_metadata?.avatar_url || '';
+    this.avatarUrl = user?.avatar_url || '';
     this.profileForm.patchValue({
       email: user.email,
-      full_name: user.user_metadata?.full_name || '',
-      timezone: user.user_metadata?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-      weekly_capacity_hours: user.user_metadata?.weekly_capacity_hours || 0
+      full_name: user?.full_name || '',
+      timezone: user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+      weekly_capacity_hours: user?.weekly_capacity_hours || 0
     });
   }
 

@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import {BehaviorSubject, Observable} from 'rxjs';
+import {toObservable} from '@angular/core/rxjs-interop';
 
 declare global {
   interface Window {
@@ -10,48 +11,49 @@ declare global {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  user = signal<any | null>(null);
-  private sessionSubject = new BehaviorSubject<any>(null);
-  session$ = this.sessionSubject.asObservable();
-  private userSubject = new BehaviorSubject<any>(null);
-  user$ = this.userSubject.asObservable();
-  private userIdSubject = new BehaviorSubject<any>(null);
-  userId$ = this.userIdSubject.asObservable();
+  // Reactive state
+  readonly session = signal<any | null>(null);
+  readonly user = signal<any | null>(null);
+  readonly userId = signal<string | null>(null);
 
-  async init(): Promise<Observable<any>> {
-    const currentSession = this.sessionSubject.getValue();
-    if (!currentSession) {
-      await window.electronAPI.auth.restoreSession().then((session: any) => {
-        this.sessionSubject.next(session);
-        this.setUserId(session.user.id)
-      });
-    } else {
-      await this.setUserId(currentSession.user.id);
-    }
-    return this.session$;
-  }
+  // Optional Observables (if you want RxJS compat)
+  readonly session$ = toObservable(this.session);
+  readonly user$ = toObservable(this.user);
+  readonly userId$ = toObservable(this.userId);
 
-  async setUser(session: any): Promise<Observable<any>> {
+  constructor() {}
+
+  /** Restore session from local (Electron) */
+  async init() {
+    const session = await window.electronAPI.auth.restoreSession();
     if (session) {
-      if (!this.user()) {  // Check if user is already set
-        await window.electronAPI.auth.getUser().then((user: any) => {
-          this.userSubject.next(user);  // Update BehaviorSubject if you are using it
-          this.user.set(user);  // Update signal if you are using it
-        });
-      }
+      this.session.set(session);
+      this.userId.set(session.user?.id ?? null);
+      const user = await window.electronAPI.auth.getUser(session.user.id);
+      this.user.set(user);
+    } else {
+      this.session.set(null);
+      this.user.set(null);
+      this.userId.set(null);
     }
-    return this.user$;
   }
 
-  async setUserId(userId: string): Promise<Observable<any>> {
-    const currentUserId = this.userIdSubject.getValue();
-    if (!currentUserId) {
-      await window.electronAPI.auth.setUserId(userId).then(()=>{
-        this.userIdSubject.next(userId);
-        this.userId$ = this.userIdSubject.asObservable();
-      });
+  /** Handle OAuth callback (from deep link) */
+  async handleCallback(url: string) {
+    const result = await window.electronAPI.auth.handleCallback(url);
+    if (result?.session) {
+      this.session.set(result.session);
+      this.userId.set(result.user?.id ?? null);
+      const user = await window.electronAPI.auth.getUser(result.user.id);
+      this.user.set(user);
     }
-    return this.userId$;
+  }
+
+  async signOut() {
+    await window.electronAPI.auth.signOut();
+    this.session.set(null);
+    this.user.set(null);
+    this.userId.set(null);
   }
 
   async signIn(email: string) {
@@ -60,11 +62,6 @@ export class AuthService {
 
   async signInWithGoogle() {
     await window.electronAPI.auth.signInGoogle();
-  }
-
-  async signOut() {
-    await window.electronAPI.auth.signOut();
-    this.user.set(null);
   }
 
   async inviteUser(payload: { email: string; role: string; teamId?: string }) {
@@ -97,10 +94,6 @@ export class AuthService {
 
   async updateProfile(profile: any) {
     return window.electronAPI?.auth.updateProfile(profile);
-  }
-
-  async handleCallback(url: string) {
-    return window.electronAPI?.auth.handleCallback(url);
   }
 
   async restoreSession() {

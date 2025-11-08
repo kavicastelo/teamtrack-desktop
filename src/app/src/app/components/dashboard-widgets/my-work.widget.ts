@@ -138,9 +138,8 @@ export class MyWorkWidgetComponent implements OnInit {
   data: any;
   constructor(private svc: DashboardService, private auth: AuthService) {}
   async ngOnInit() {
-    this.auth.user$.subscribe(async (user) => {
-      const userId = user?.user?.id;
-      this.data = await this.svc.getMyWork(userId);
-    });
+    const user = await this.auth.user();
+    if (!user) return;
+    this.data = await this.svc.getMyWork(user.id);
   }
 }

@@ -1,4 +1,4 @@
-import {Component, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {Component, effect, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet} from '@angular/router';
 import {IpcService} from './services/ipc.service';
 import {AsyncPipe, NgClass, NgIf} from '@angular/common';
@@ -42,6 +42,25 @@ export class AppComponent implements OnInit, OnDestroy {
     private dialog: MatDialog
   ) {
     this.router.routeReuseStrategy.shouldReuseRoute = () => false;
+    effect(() => {
+      const session = this.auth.session();
+      const user = this.auth.user();
+
+      setTimeout(() => {
+        if (!session && !window.location.href.includes('auth/callback')) {
+          this.router.navigate(['/auth/login']).then();
+          return;
+        } else {
+          this.router.navigate(['/tasks']).then();
+          return;
+        }
+      }, 800);
+
+      if (user) {
+        this.userProfile = user;
+        this.adminCheck().then();
+      }
+    });
   }
 
   // ────────────────────────────────
@@ -52,12 +71,12 @@ export class AppComponent implements OnInit, OnDestroy {
     this.trackCurrentRoute();
     this.listenForPresence();
 
-    // 👇 Listen for deep-link events from Electron
     await this.ipc.onDeepLink((url: string) => {
       this.handleDeepLink(url);
     });
 
-    this.initAuth().then();
+    // Initialize auth state
+    await this.auth.init();
   }
 
   ngOnDestroy() {
@@ -120,6 +139,7 @@ export class AppComponent implements OnInit, OnDestroy {
   async logout() {
     try {
       await this.auth.signOut();
+      this.userProfile = null;
       await this.router.navigate(['/auth/login']);
     } catch (err) {
       console.error('Logout failed', err);
@@ -148,26 +168,14 @@ export class AppComponent implements OnInit, OnDestroy {
   // ────────────────────────────────
   // AUTH
   // ────────────────────────────────
-  private async initAuth() {
-    this.auth.init().then(async (session) => {
-      this.auth.setUser(session).then(async (r) => {
-        r.subscribe(async (r) => {
-          this.userProfile = r;
-          await this.loadLocalUsers();
-          if (!r && !window.location.href.includes('auth/callback')) {
-            await this.router.navigate(['/auth/login']);
-          }
-        });
-      });
-    });
-  }
+  private async adminCheck() {
+    this.isAdmin = this.userProfile.role === 'admin';
 
-  private async loadLocalUsers() {
-    await this.auth.listLocalUsers().then(r => {
-      const currentUser = r.find((user:any) => user.id === this.userProfile.user.id);
-      this.isAdmin = currentUser.role === 'admin';
-      if (this.isAdmin) localStorage.setItem('isAdmin', this.isAdmin.toString());
-    });
+    if (this.isAdmin) {
+      localStorage.setItem('isAdmin', this.isAdmin.toString());
+    } else {
+      localStorage.removeItem('isAdmin');
+    }
   }
 
   // 👇 Process the incoming deep link
@@ -189,17 +197,16 @@ export class AppComponent implements OnInit, OnDestroy {
   // OPEN PROFILE
   // ────────────────────────────────
   openUserProfile() {
-    const userMeta = this.userProfile.user.user_metadata
     const user = {
-      id: this.userProfile.user.id,
-      full_name: userMeta.full_name,
-      email: userMeta.email,
-      role: this.userProfile.user.role,
-      avatar_url: userMeta.avatar_url
+      id: this.userProfile.id,
+      full_name: this.userProfile.full_name,
+      email: this.userProfile.email,
+      role: this.userProfile.role,
+      avatar_url: this.userProfile.avatar_url
     }
     const ref = this.dialog.open(ProfileComponent, {
       width: '500px',
-      data: { user: user, currentUserId: this.userProfile.user.id }
+      data: { user: user, currentUserId: this.userProfile.id }
     });
 
     ref.afterClosed().subscribe((result) => {
