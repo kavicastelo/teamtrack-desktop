@@ -7,6 +7,7 @@ import { createMainWindow, getMainWindow } from "./windows/main-window";
 import { registerIPCHandlers } from "./ipc/ipc-handlers";
 import { initializeAppServices, shutdownServices, checkForUpdates } from "./services/app-services";
 import { registerProtocolHandlers } from "./utils/protocol";
+import dns from "dns";
 
 const logFile = path.join(app.getPath("userData"), "startup.log");
 
@@ -30,6 +31,12 @@ if (process.platform === "win32") {
     if (deepArg) deepLinkUrl = deepArg;
 }
 
+function checkInternetConnection() {
+    return new Promise((resolve) => {
+        dns.lookup("google.com", (err) => resolve(!err));
+    });
+}
+
 app.on("second-instance", (_, argv) => {
     const url = argv.find(a => a.startsWith(`${protocolName}://`));
     const mainWindow = getMainWindow();
@@ -48,6 +55,16 @@ app.on("open-url", (event, url) => {
 });
 
 app.whenReady().then(async () => {
+    const online = await checkInternetConnection();
+    if (!online) {
+        const { dialog } = require("electron");
+        dialog.showErrorBox(
+            "Network Required",
+            "An active internet connection is required to start the application."
+        );
+        app.exit(1);
+        return;
+    }
     await checkForUpdates();
     try {
         fs.writeFileSync(logFile, "App starting...\n");
@@ -58,7 +75,8 @@ app.whenReady().then(async () => {
     } catch (err) {
         fs.writeFileSync(logFile, "[Main] Startup error: " + err + "\n");
         console.error("[Main] Startup error:", err);
-        app.quit();
+        app.removeAllListeners("before-quit");
+        app.exit(1);
     }
 });
 
@@ -67,6 +85,10 @@ app.on("activate", () => {
 });
 
 app.on("before-quit", (event) => {
+    if (!shutdownServices) return; // safety check
     event.preventDefault();
-    shutdownServices().finally(() => app.exit());
+
+    Promise.resolve()
+        .then(() => shutdownServices())
+        .finally(() => app.exit());
 });

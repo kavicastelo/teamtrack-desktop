@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <title>Offline Mode - TeamTrack</title>
+    <style>
+        :root {
+            --primary-color: #0078d4;
+            --text-color: #333;
+            --bg-color: #f7f8fa;
+            --card-bg: #fff;
+            --shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            --radius: 12px;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background: var(--bg-color);
+            font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .card {
+            background: var(--card-bg);
+            box-shadow: var(--shadow);
+            border-radius: var(--radius);
+            text-align: center;
+            padding: 40px 50px;
+            max-width: 400px;
+            width: 90%;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .icon {
+            font-size: 60px;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 22px;
+            margin: 0 0 10px;
+            color: var(--primary-color);
+        }
+
+        p {
+            margin: 0 0 20px;
+            line-height: 1.5;
+            color: #555;
+        }
+
+        button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        button:hover {
+            background: #0062ad;
+        }
+
+        .spinner {
+            border: 3px solid #eee;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            width: 26px;
+            height: 26px;
+            margin: 20px auto 0;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        footer {
+            font-size: 12px;
+            margin-top: 25px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="icon">🌐</div>
+    <h1>You’re Offline</h1>
+    <p>It looks like your device is not connected to the internet.<br/>
+        Please check your connection and try again.</p>
+    <button id="retryBtn">Retry Connection</button>
+    <div class="spinner" id="spinner"></div>
+    <footer>TeamTrack Desktop</footer>
+</div>
+
+<script>
+    const retryBtn = document.getElementById("retryBtn");
+    const spinner = document.getElementById("spinner");
+
+    retryBtn.addEventListener("click", async () => {
+        spinner.style.display = "block";
+        retryBtn.disabled = true;
+        retryBtn.textContent = "Checking...";
+
+        // Simple check using fetch or DNS-like ping
+        try {
+            const online = await fetch("https://www.google.com/favicon.ico", { mode: "no-cors" });
+            // Reload the app once connection succeeds
+            location.reload();
+        } catch (e) {
+            alert("Still offline. Please reconnect to the internet.");
+            spinner.style.display = "none";
+            retryBtn.disabled = false;
+            retryBtn.textContent = "Retry Connection";
+        }
+    });
+</script>
+</body>
+</html>

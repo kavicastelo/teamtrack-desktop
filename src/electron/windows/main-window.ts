@@ -1,4 +1,4 @@
-import {app, BrowserWindow} from "electron";
+import {app, BrowserWindow, dialog} from "electron";
 import path from "path";
 import dotenv from "dotenv";
 
@@ -25,10 +25,24 @@ export function createMainWindow(initialDeepLink?: string | null) {
 
     const startUrl =
         process.env.ELECTRON_START_URL ||
-        `file://${path.join(__dirname, "../../app/dist/app/browser/index.html")}`;
+        `file://${path.join(__dirname, "../../../src/app/dist/app/browser/index.html")}`;
 
-    mainWindow.loadURL(startUrl).catch((err) =>
-        console.error("[MainWindow] Failed to load:", err)
+    const isPackaged = app.isPackaged;
+    const offlinePagePath = isPackaged
+        ? path.join(process.resourcesPath, "app.asar.unpacked", "static", "offline.html")
+        : path.join(process.cwd(), "src", "electron", "static", "offline.html");
+
+    mainWindow.loadURL(startUrl).catch((err) => {
+        console.error("[MainWindow] Failed to load:", err);
+        mainWindow!.loadFile(offlinePagePath).catch(err2 => {
+            console.error("[MainWindow] Failed to load fallback:", err2);
+            dialog.showErrorBox(
+                "Network Error",
+                "Unable to connect to the server. Please check your internet connection and restart the app."
+            );
+            app.exit(1);
+        });
+        }
     );
 
     mainWindow.webContents.once("did-finish-load", () => {
