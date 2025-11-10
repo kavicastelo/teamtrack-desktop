@@ -9,7 +9,8 @@
     "serve:electron": "wait-on http://localhost:4200 && electron .",
     "build:angular": "cd src/app && ng build",
     "postinstall": "cd src/app && npm install",
-    "build:electron": "tsc -p tsconfig.electron.json",
+    "build:electron": "tsc -p tsconfig.electron.json && npm run copy:electron-assets",
+    "copy:electron-assets": "copyfiles -u 2 src/electron/static/**/* dist/electron/static",
     "electron:start": "npm run build:electron && electron dist/electron/main.js",
     "electron:dev": "tsc -p tsconfig.electron.json --watch & electron dist/electron/main.js",
     "pack": "npm run build:angular && npm run build:electron && electron-builder --dir",
@@ -33,6 +34,8 @@
       "dist/electron/**/*",
       "dist/drizzle/**/*",
       "dist/node/**/*",
+      "src/assets/**/*",
+      "src/electron/static/**/*",
       "src/app/dist/**/*",
       ".env",
       "!**/*.ts",
@@ -43,7 +46,8 @@
       "smartUnpack": true
     },
     "asarUnpack": [
-      ".env"
+      ".env",
+      "static/**/*"
     ],
     "win": {
       "target": [
@@ -63,15 +67,16 @@
     }
   },
   "keywords": [],
-  "author": "",
+  "author": "Kavi Castelo",
   "license": "ISC",
-  "description": "",
+  "description": "Team track desktop application mvp for talentboozt team",
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/ws": "^8.18.1",
     "7zip-bin": "^5.2.0",
+    "copyfiles": "^2.4.1",
     "electron": "^38.2.2",
     "electron-builder": "^26.0.12",
     "wait-on": "^8.0.5"
