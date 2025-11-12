@@ -1,156 +1,149 @@
 # 🧮 Data Model & Relationships (ASCII ERD)
 
 ```mermaid
-                                       ┌──────────────────────────┐
-                                       │        users             │
-                                       │──────────────────────────│
-                                       │ id (PK)                 │
-                                       │ email                   │
-                                       │ full_name               │
-                                       │ role                    │
-                                       │ avatar_url              │
-                                       │ timezone                │
-                                       │ calendar_sync_enabled   │
-                                       │ google_calendar_id      │
-                                       │ available_times         │
-                                       │ google_refresh_token    │
-                                       │ weekly_capacity_hours   │
-                                       └───────────────┬──────────┘
-                                                       │1
-                                                       │
-                                                       │N
-                                     ┌─────────────────┴──────────────────┐
-                                     │         team_members               │
-                                     │────────────────────────────────────│
-                                     │ id (PK)                            │
-                                     │ team_id (FK → teams.id)            │
-                                     │ user_id (FK → users.id)            │
-                                     │ role                               │
-                                     │ created_at                         │
-                                     └──────────────────┬─────────────────┘
-                                                        │N
-                                                        │
-                                                        │1
-                               ┌────────────────────────┴────────────────────────┐
-                               │                     teams                      │
-                               │────────────────────────────────────────────────│
-                               │ id (PK)                                        │
-                               │ name                                           │
-                               │ description                                    │
-                               │ created_at                                     │
-                               │ updated_at                                     │
-                               │ project_id (FK → projects.id)                  │
-                               └────────────────────────┬───────────────────────┘
-                                                        │1
-                                                        │
-                                                        │N
-                   ┌────────────────────────────────────┴─────────────────────────────────────┐
-                   │                                   projects                               │
-                   │──────────────────────────────────────────────────────────────────────────│
-                   │ id (PK)                                                                  │
-                   │ name                                                                     │
-                   │ description                                                              │
-                   │ owner_id (FK → users.id)                                                 │
-                   │ team_id (FK → teams.id)                                                  │
-                   │ created_at                                                               │
-                   │ updated_at                                                               │
-                   └────────────────────────┬────────────────────────────────────────────────┘
-                                            │1
-                                            │
-                                            │N
-                  ┌─────────────────────────┴───────────────────────────┐
-                  │                        tasks                        │
-                  │─────────────────────────────────────────────────────│
-                  │ id (PK)                                             │
-                  │ project_id (FK → projects.id)                       │
-                  │ title                                               │
-                  │ description                                         │
-                  │ status                                              │
-                  │ assignee (FK → users.id)                            │
-                  │ priority                                            │
-                  │ created_at                                          │
-                  │ updated_at                                          │
-                  │ due_date                                            │
-                  └─────────────┬───────────────────────────────────────┘
-                                │1
-                                │
-                                │N
-          ┌─────────────────────┴────────────────────────┐
-          │                 attachments                 │
-          │──────────────────────────────────────────────│
-          │ id (PK)                                     │
-          │ uploaded_by (FK → users.id)                 │
-          │ taskId (FK → tasks.id)                      │
-          │ filename, mimetype, size                    │
-          │ supabase_path                               │
-          │ created_at                                  │
-          └─────────────────────────────────────────────┘
+erDiagram
 
+    users {
+        int id PK
+        string email
+        string full_name
+        string role
+        string avatar_url
+        string timezone
+        boolean calendar_sync_enabled
+        string google_calendar_id
+        string available_times
+        string google_refresh_token
+        int weekly_capacity_hours
+    }
 
-                         ┌────────────────────────────┐
-                         │        time_entries        │
-                         │────────────────────────────│
-                         │ id (PK)                   │
-                         │ user_id (FK → users.id)   │
-                         │ project_id (FK → projects.id) │
-                         │ task_id (FK → tasks.id)   │
-                         │ start_ts, duration_minutes │
-                         │ created_at                 │
-                         └────────────────────────────┘
+    team_members {
+        int id PK
+        int team_id FK
+        int user_id FK
+        string role
+        datetime created_at
+    }
 
+    teams {
+        int id PK
+        string name
+        string description
+        datetime created_at
+        datetime updated_at
+        int project_id FK
+    }
 
-                         ┌────────────────────────────┐
-                         │         heartbeats         │
-                         │────────────────────────────│
-                         │ id (PK)                   │
-                         │ user_id (FK → users.id)   │
-                         │ team_id (FK → teams.id)   │
-                         │ timestamp, duration_ms     │
-                         │ app, platform, source      │
-                         │ title, metadata            │
-                         │ last_seen                  │
-                         └────────────────────────────┘
+    projects {
+        int id PK
+        string name
+        string description
+        int owner_id FK
+        int team_id FK
+        datetime created_at
+        datetime updated_at
+    }
 
+    tasks {
+        int id PK
+        int project_id FK
+        string title
+        string description
+        string status
+        int assignee FK
+        string priority
+        datetime created_at
+        datetime updated_at
+        datetime due_date
+    }
 
-                         ┌────────────────────────────┐
-                         │       calendar_events      │
-                         │────────────────────────────│
-                         │ id (PK)                   │
-                         │ user_id (FK → users.id)   │
-                         │ calendar_id               │
-                         │ start, end, summary        │
-                         │ raw, updated_at            │
-                         └────────────────────────────┘
+    attachments {
+        int id PK
+        int uploaded_by FK
+        int task_id FK
+        string filename
+        string mimetype
+        int size
+        string supabase_path
+        datetime created_at
+    }
 
+    time_entries {
+        int id PK
+        int user_id FK
+        int project_id FK
+        int task_id FK
+        datetime start_ts
+        int duration_minutes
+        datetime created_at
+    }
 
-                         ┌────────────────────────────┐
-                         │          events            │
-                         │────────────────────────────│
-                         │ id (PK)                   │
-                         │ actor (FK → users.id)     │
-                         │ action                    │
-                         │ object_type, object_id     │
-                         │ payload, created_at        │
-                         └────────────────────────────┘
+    heartbeats {
+        int id PK
+        int user_id FK
+        int team_id FK
+        datetime timestamp
+        int duration_ms
+        string app
+        string platform
+        string source
+        string title
+        string metadata
+        datetime last_seen
+    }
 
+    calendar_events {
+        int id PK
+        int user_id FK
+        string calendar_id
+        datetime start
+        datetime end
+        string summary
+        string raw
+        datetime updated_at
+    }
 
-                         ┌────────────────────────────┐
-                         │         revisions          │
-                         │────────────────────────────│
-                         │ id (PK)                   │
-                         │ object_type, object_id     │
-                         │ origin_id                  │
-                         │ seq, payload               │
-                         │ created_at, synced         │
-                         └────────────────────────────┘
+    events {
+        int id PK
+        int actor FK
+        string action
+        string object_type
+        int object_id
+        string payload
+        datetime created_at
+    }
 
+    revisions {
+        int id PK
+        string object_type
+        int object_id
+        int origin_id
+        int seq
+        string payload
+        datetime created_at
+        boolean synced
+    }
 
-                         ┌────────────────────────────┐
-                         │       local_session        │
-                         │────────────────────────────│
-                         │ id (PK)                   │
-                         │ session_encrypted          │
-                         └────────────────────────────┘
+    local_session {
+        int id PK
+        string session_encrypted
+    }
+
+    %% Relationships
+    users ||--o{ team_members : "has"
+    teams ||--o{ team_members : "includes"
+    teams ||--o{ projects : "has"
+    projects ||--o{ tasks : "has"
+    users ||--o{ tasks : "assigned to"
+    tasks ||--o{ attachments : "has"
+    users ||--o{ attachments : "uploads"
+    users ||--o{ time_entries : "logs"
+    projects ||--o{ time_entries : "tracked by"
+    tasks ||--o{ time_entries : "related to"
+    users ||--o{ heartbeats : "produces"
+    teams ||--o{ heartbeats : "records"
+    users ||--o{ calendar_events : "owns"
+    users ||--o{ events : "acts as"
 ```
 
 ---
@@ -215,17 +208,19 @@
 ## 🧭 ER Model (Quick Visual)
 
 ```mermaid
-users ─┬─< team_members >─┬─ teams
-       │                  │
-       │                  └─< projects >─< tasks >─< attachments >
-       │                                   │
-       │                                   └─< time_entries >
-       │
-       ├─< heartbeats >
-       ├─< calendar_events >
-       ├─< events >
-       ├─< revisions >
-       └─< local_session >
+erDiagram
+
+    users ||--o{ team_members : ""
+    team_members }o--|| teams : ""
+    teams ||--o{ projects : ""
+    projects ||--o{ tasks : ""
+    tasks ||--o{ attachments : ""
+    tasks ||--o{ time_entries : ""
+    users ||--o{ heartbeats : ""
+    users ||--o{ calendar_events : ""
+    users ||--o{ events : ""
+    users ||--o{ revisions : ""
+    users ||--o{ local_session : ""
 ```
 
 ---
