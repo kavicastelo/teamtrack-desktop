@@ -34,6 +34,7 @@ export const users = sqliteTable('users', {
     full_name: text('full_name').notNull(),
     role: text('role').notNull(),
     avatar_url: text('avatar_url'),
+    default_team_id: text('default_team_id'),
     timezone: text('timezone').notNull(),
     calendar_sync_enabled: integer('calendar_sync_enabled').notNull().default(0),
     google_calendar_id: text('google_calendar_id').notNull().default(''),

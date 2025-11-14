@@ -293,15 +293,16 @@ export class SupabaseSyncService extends EventEmitter {
         } else if (table === 'users') {
             try {
                 const sql = `
-                    INSERT INTO users (id, email, full_name, role, avatar_url, timezone, calendar_sync_enabled,
+                    INSERT INTO users (id, email, full_name, role, avatar_url, default_team_id, timezone, calendar_sync_enabled,
                                        google_calendar_id, available_times, updated_at, invited_at,
                                        google_refresh_token, last_calendar_sync)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
                     UPDATE SET
                         email=excluded.email,
                         full_name=excluded.full_name,
                         role =excluded.role,
                         avatar_url=excluded.avatar_url,
+                        default_team_id=excluded.default_team_id,
                         timezone=excluded.timezone,
                         calendar_sync_enabled=excluded.calendar_sync_enabled,
                         google_calendar_id=excluded.google_calendar_id,
@@ -317,6 +318,7 @@ export class SupabaseSyncService extends EventEmitter {
                     record.full_name,
                     record.role,
                     record.avatar_url,
+                    record.default_team_id,
                     record.timezone,
                     record.calendar_sync_enabled,
                     record.google_calendar_id,
@@ -698,16 +700,17 @@ export class SupabaseSyncService extends EventEmitter {
                     if (!local || new Date(record.updated_at).getTime() > new Date(local.updated_at).getTime()) {
                         this.dbService.db
                             .prepare(
-                                `INSERT INTO users (id, email, full_name, role, avatar_url, timezone,
+                                `INSERT INTO users (id, email, full_name, role, avatar_url, default_team_id, timezone,
                                                     calendar_sync_enabled, google_calendar_id, available_times,
                                                     updated_at, invited_at, google_refresh_token, last_calendar_sync,
                                                     weekly_capacity_hours)
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
                                 UPDATE SET
                                     email=excluded.email,
                                     full_name=excluded.full_name,
                                     role =excluded.role,
                                     avatar_url=excluded.avatar_url,
+                                    default_team_id=excluded.default_team_id,
                                     timezone=excluded.timezone,
                                     calendar_sync_enabled=excluded.calendar_sync_enabled,
                                     google_calendar_id=excluded.google_calendar_id,
@@ -718,7 +721,7 @@ export class SupabaseSyncService extends EventEmitter {
                                     last_calendar_sync=excluded.last_calendar_sync,
                                     weekly_capacity_hours=excluded.weekly_capacity_hours`
                             )
-                            .run(record.id, record.email, record.full_name, record.role, record.avatar_url, record.timezone, record.calendar_sync_enabled, record.google_calendar_id, record.available_times, record.updated_at, record.invited_at, record.google_refresh_token, record.last_calendar_sync, record.weekly_capacity_hours);
+                            .run(record.id, record.email, record.full_name, record.role, record.avatar_url, record.default_team_id, record.timezone, record.calendar_sync_enabled, record.google_calendar_id, record.available_times, record.updated_at, record.invited_at, record.google_refresh_token, record.last_calendar_sync, record.weekly_capacity_hours);
                     }
                 }
 
@@ -833,11 +836,14 @@ export class SupabaseSyncService extends EventEmitter {
             const limit = 500;
             let offset = 0;
             let totalFetched = 0;
+            // Last 14 days ISO timestamp
+            const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
             try {
                 while (true) {
                     const {data, error} = await this.client
                         .from("heartbeats")
                         .select("*")
+                        .gte("timestamp", fourteenDaysAgo)
                         .order("timestamp", {ascending: true})
                         .range(offset, offset + limit - 1);
 
@@ -883,6 +889,7 @@ export class SupabaseSyncService extends EventEmitter {
                 this.sendToUI("sync:pull", {count: totalFetched});
                 this.sendToUI("sync:success", {message: `Pulled ${totalFetched} heartbeats`});
             } catch (err) {
+                console.log(err)
                 this.sendToUI("sync:error", {message: "Failed to pull heartbeats", error: err});
             }
         } else if (tabel === 'notifications') {

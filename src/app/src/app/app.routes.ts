@@ -17,5 +17,5 @@ export const routes: Routes = [
   { path: 'auth/login', loadComponent: () => import('./pages/auth/auth-login/auth-login.component').then(m => m.AuthLoginComponent) },
   { path: 'auth/callback', loadComponent: () => import('./pages/auth/auth-callback/auth-callback.component').then(m => m.AuthCallbackComponent) },
   { path: 'settings', loadComponent: () => import('./pages/profile/profile-edit/profile-edit.component').then(m => m.ProfileEditComponent) },
-  { path: '**', redirectTo: '/tasks', pathMatch: 'full'}
+  { path: '**', loadComponent: () => import('./pages/dashboard/dashboard/dashboard.component').then(m => m.DashboardComponent) },
 ];

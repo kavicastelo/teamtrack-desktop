@@ -216,7 +216,7 @@ function attachHeartbeatListeners() {
 }
 
 function createDesktopPayload(win: ActiveWindow, startTime: number, duration: number, lastSeen: number) {
-    const userId = store.get('currentUserId');
+    const userId: any = store.get('currentUserId');
     return {
         user_id: userId,
         timestamp: startTime,
@@ -229,7 +229,7 @@ function createDesktopPayload(win: ActiveWindow, startTime: number, duration: nu
             path: win.owner.path,
             processId: win.owner.processId
         },
-        team_id: dbService.teamIds(userId)[0] || null,
+        team_id: dbService.getCurrentTeam(userId) || dbService.teamIds(userId)[0] || null,
         last_seen: lastSeen
     };
 }

@@ -25,7 +25,7 @@ export class DashboardService {
     return window.electronAPI.metrics.getActivityTimeByUser(userId, limit);
   }
 
-  async getProjectHeatmap(days = 30) {
-    return window.electronAPI.metrics.getProjectHeatmap(days);
+  async getProjectHeatmap(days = 30, teamId = null) {
+    return window.electronAPI.metrics.getProjectHeatmap(days, teamId);
   }
 }

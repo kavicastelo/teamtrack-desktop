@@ -77,7 +77,9 @@ export class AuthService {
   }
 
   async getUser(userId?: string) {
-    return window.electronAPI?.auth.getUser(userId);
+    const user = await window.electronAPI.auth.getUser(userId);
+    this.user.set(user);
+    return user;
   }
 
   async updateUserRole(payload: { userId: string; role: string; teamId?: string }) {
@@ -94,6 +96,10 @@ export class AuthService {
 
   async updateProfile(profile: any) {
     return window.electronAPI?.auth.updateProfile(profile);
+  }
+
+  async updateDefaultTeam(payload: any) {
+    return window.electronAPI?.auth.updateDefaultTeam(payload);
   }
 
   async restoreSession() {

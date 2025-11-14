@@ -16,6 +16,7 @@ import { Subscription } from 'rxjs';
 import { IpcService } from '../../../services/ipc.service';
 import { AuthService } from '../../../services/auth.service';
 import {MatDivider} from '@angular/material/divider';
+import {MatTooltip} from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-profile',
@@ -30,7 +31,8 @@ import {MatDivider} from '@angular/material/divider';
     MatButtonModule,
     MatIconModule,
     MatSlideToggleModule,
-    MatDivider
+    MatDivider,
+    MatTooltip
   ],
   templateUrl: './profile-edit.component.html',
   styleUrls: ['./profile-edit.component.scss']
@@ -45,10 +47,12 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
   calendarConnected = false;
   calendarId: string | null = null;
   calendarEvents: any[] = [];
-  busySlots: { start: number; end: number }[] = [];
-  freeSlots: { start: number; end: number }[] = [];
+  busySlots: { start: number; end: number; startOffset: number; durationPercent: number }[] = [];
+  freeSlots: { start: number; end: number; startOffset: number; durationPercent: number }[] = [];
 
   checking = true;
+
+  teams: any[] = [];
 
   constructor(
     private fb: FormBuilder,
@@ -73,8 +77,7 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
     if (!this.user) return;
     this.patchProfile(this.user);
 
-    // Optionally load saved availability from supabase
-    // await this.loadRemoteProfile();
+    await this.loadTeams();
 
     await this.loadCalendarStatus();
 
@@ -97,13 +100,6 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
     });
   }
 
-  async loadRemoteProfile() {
-    const profile = await this.auth.getUser(this.user.id);
-    if (!profile) return;
-
-    this.profileForm.patchValue(profile);
-  }
-
   async save() {
     if (this.profileForm.invalid || !this.user) return;
 
@@ -124,6 +120,23 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
     } finally {
       this.saving = false;
     }
+  }
+
+  async loadTeams() {
+    this.teams = await this.ipc.userTeams(this.user.id);
+  }
+
+  selectDefaultTeam(teamId: string) {
+    const payload = {
+      ...this.user,
+      default_team_id: teamId
+    }
+    this.auth.updateDefaultTeam(payload).then(async () => {
+      setTimeout(async () => {
+        this.user = await this.auth.getUser(this.user.id);
+      }, 1000)
+      this.snack.open('Default team updated', 'OK', {duration: 2000});
+    });
   }
 
   async loadCalendarStatus() {
@@ -162,12 +175,22 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
   }
 
   computeFreeSlots() {
-    // optional simple algorithm: just show busy events
-    this.busySlots = this.calendarEvents
-      .map(ev => ({
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+    const startMs = dayStart.getTime();
+    const endMs = startMs + 7 * 24 * 60 * 60 * 1000;
+
+    this.busySlots = this.calendarEvents.map(ev => {
+      const s = ev.start - startMs;
+      const e = ev.end - startMs;
+
+      return {
         start: ev.start,
-        end: ev.end
-      }));
+        end: ev.end,
+        startOffset: (s / (endMs - startMs)) * 100,
+        durationPercent: ((e - s) / (endMs - startMs)) * 100
+      };
+    });
   }
 
   getInitials(name: string): string {

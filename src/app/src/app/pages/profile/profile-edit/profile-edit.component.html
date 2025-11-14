@@ -1,104 +1,137 @@
 <div class="profile-root dark-theme">
   <mat-card class="card">
-    <div class="header-row">
-      <div class="avatar-container" (click)="changeAvatar()">
-        <img *ngIf="avatarUrl; else initialsTpl" [src]="avatarUrl" class="avatar" alt="avatar">
-        <ng-template #initialsTpl>
-          <div class="avatar initials">{{ getInitials(profileForm.value.full_name) }}</div>
-        </ng-template>
-      </div>
 
-      <div>
-        <h2 class="title">Profile</h2>
-        <span class="sub">Manage account & availability</span>
+    <!-- HEADER -->
+    <section class="section header-section">
+      <div class="header-row">
+        <div class="avatar-container" (click)="changeAvatar()">
+          <img *ngIf="avatarUrl; else initialsTpl" [src]="avatarUrl" class="avatar" alt="avatar">
+          <ng-template #initialsTpl>
+            <div class="avatar initials">{{ getInitials(profileForm.value.full_name) }}</div>
+          </ng-template>
+        </div>
+
+        <div>
+          <h2 class="title">Profile</h2>
+          <span class="sub">Manage account, teams & availability</span>
+        </div>
       </div>
-    </div>
+    </section>
 
     <form [formGroup]="profileForm" class="form">
 
-      <mat-form-field appearance="fill" class="full">
-        <mat-label>Email</mat-label>
-        <input matInput formControlName="email">
-      </mat-form-field>
+      <!-- BASIC INFO -->
+      <section class="section">
+        <h3 class="section-title">Your Info</h3>
 
-      <mat-form-field appearance="fill" class="full">
-        <mat-label>Full name</mat-label>
-        <input matInput formControlName="full_name" required>
-      </mat-form-field>
+        <mat-form-field appearance="fill" class="full">
+          <mat-label>Email</mat-label>
+          <input matInput formControlName="email">
+        </mat-form-field>
 
-      <mat-form-field appearance="fill" class="full">
-        <mat-label>Timezone</mat-label>
-        <input matInput formControlName="timezone">
-      </mat-form-field>
+        <mat-form-field appearance="fill" class="full">
+          <mat-label>Full name</mat-label>
+          <input matInput formControlName="full_name">
+        </mat-form-field>
 
-      <mat-form-field appearance="fill" class="full">
-        <mat-label>Weekly Capacity (Hours)</mat-label>
-        <input matInput formControlName="weekly_capacity_hours" type="number" min="0" />
-      </mat-form-field>
+        <mat-form-field appearance="fill" class="full">
+          <mat-label>Timezone</mat-label>
+          <input matInput formControlName="timezone">
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" class="full">
+          <mat-label>Weekly Capacity (Hours)</mat-label>
+          <input matInput type="number" formControlName="weekly_capacity_hours">
+        </mat-form-field>
+      </section>
 
       <mat-divider></mat-divider>
 
-      <section class="calendar-block">
-        <div class="row">
+      <!-- TEAMS SECTION -->
+      <section class="section">
+        <h3 class="section-title">Your Teams</h3>
+        <div class="teams-container">
+
+          <div
+            *ngFor="let t of teams"
+            class="team-chip"
+            [ngClass]="{ default: t.id === user.default_team_id }"
+            (click)="selectDefaultTeam(t.id)"
+            matTooltip="Click to set as default"
+          >
+            <span>{{ t.name }}</span>
+
+            <mat-icon *ngIf="t.id === user.default_team_id" class="default-badge">
+              workspace_premium
+            </mat-icon>
+          </div>
+
+          <div *ngIf="teams.length === 0" class="empty-state">
+            Not part of any team yet.
+          </div>
+        </div>
+      </section>
+
+      <mat-divider></mat-divider>
+
+      <!-- CALENDAR -->
+      <section class="section">
+        <h3 class="section-title">Calendar Sync</h3>
+
+        <div class="calendar-row">
           <mat-slide-toggle formControlName="calendar_sync_enabled">
-            Calendar Sync
+            Sync with Google Calendar
           </mat-slide-toggle>
 
-          <span *ngIf="calendarConnected" class="connected-badge">
-            • Connected
-          </span>
+          <span *ngIf="calendarConnected" class="connected-badge">• Connected</span>
         </div>
 
         <div class="calendar-actions">
-          <button mat-stroked-button color="primary" (click)="connectCalendar()" *ngIf="!calendarConnected">
+          <button mat-stroked-button color="primary" *ngIf="!calendarConnected" (click)="connectCalendar()">
             Connect Google Calendar
           </button>
 
-          <button mat-stroked-button color="warn" (click)="disconnectCalendar()" *ngIf="calendarConnected">
+          <button mat-stroked-button color="warn" *ngIf="calendarConnected" (click)="disconnectCalendar()">
             Disconnect
           </button>
         </div>
 
-        <div *ngIf="calendarConnected" class="calendar-status">
+        <div class="calendar-status" *ngIf="calendarConnected">
           <mat-icon>event</mat-icon>
-          Connected to: <strong>{{ calendarId }}</strong>
+          Connected as: <strong>{{ calendarId }}</strong>
         </div>
       </section>
 
-      <section *ngIf="calendarConnected">
-        <h3 class="section-title">This week’s busy slots</h3>
-        <div class="timeline">
-          <div *ngFor="let slot of busySlots" class="slot">
-            <div>
-              {{ slot.start | date:'EEE HH:mm' }}
-              →
-              {{ slot.end | date:'HH:mm' }}
-            </div>
-          </div>
-          <div *ngIf="busySlots.length === 0" class="empty">
-            You’re free this week 🎉
-          </div>
+      <!-- TIMELINE PREVIEW -->
+      <section *ngIf="calendarConnected" class="section">
+        <h3 class="section-title">Weekly Activity Timeline</h3>
+
+        <div class="timeline-bar">
+          <div
+            *ngFor="let slot of busySlots"
+            class="bar"
+            [style.left.%]="slot.startOffset"
+            [style.width.%]="slot.durationPercent"
+          ></div>
         </div>
+
+        <div *ngIf="busySlots.length === 0" class="empty-state">No busy time — You're fully free 🎉</div>
       </section>
 
       <mat-divider></mat-divider>
 
-      <mat-form-field appearance="fill" class="full">
-        <mat-label>Availability rules</mat-label>
-        <textarea
-          matInput
-          rows="3"
-          formControlName="available_times"
-          placeholder='Ex: {"mon": "9-17", "fri": "10-14"}'
-        ></textarea>
-      </mat-form-field>
+      <!-- RULES -->
+      <section class="section">
+        <h3 class="section-title">Availability Rules</h3>
 
-      <button mat-flat-button
-              color="primary"
-              class="full submit"
-              (click)="save()"
-              [disabled]="saving">
-        {{ saving ? 'Saving...' : 'Save changes' }}
+        <mat-form-field appearance="fill" class="full">
+          <mat-label>Available Times (JSON)</mat-label>
+          <textarea matInput rows="3" formControlName="available_times"></textarea>
+        </mat-form-field>
+      </section>
+
+      <button mat-flat-button color="primary" class="full submit" (click)="save()" [disabled]="saving">
+        {{ saving ? 'Saving…' : 'Save changes' }}
       </button>
     </form>
   </mat-card>

@@ -252,7 +252,7 @@ export class UsersPageComponent implements OnInit {
         list.map(async (user: any) => {
           try {
             const teams = await this.ipc.userTeams(user.id);
-            return { ...user, teams: teams ?? [] };
+            return { ...user, teams: teams.name ?? [] };
           } catch (err) {
             console.warn(`Failed to load teams for user ${user.id}:`, err);
             return { ...user, teams: [] };
