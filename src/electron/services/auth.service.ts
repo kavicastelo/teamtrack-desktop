@@ -1,11 +1,14 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { AES, enc } from 'crypto-js';
-import { BrowserWindow } from 'electron';
-import { EventEmitter } from 'events';
-import type { Session } from '@supabase/supabase-js';
+import type {Session} from '@supabase/supabase-js';
+import {createClient, SupabaseClient} from '@supabase/supabase-js';
+import {AES, enc} from 'crypto-js';
+import {BrowserWindow} from 'electron';
+import {EventEmitter} from 'events';
 import {localSession, users} from "../../drizzle/shema";
 import {eq} from "drizzle-orm";
 import Utf8 from "crypto-js/enc-utf8";
+import {CalendarTokensRepo} from "../../node/db/repo/calendarTokens.repo";
+import {v4 as uuidv4} from "uuid";
+
 const Store = require('electron-store');
 const store = new Store();
 
@@ -16,6 +19,7 @@ export class AuthService extends EventEmitter {
     private readonly encryptionKey = process.env.LOCAL_ENCRYPT_KEY || 'local_key';
     private readonly supabaseUrl: string;
     private dbService: any;
+    private calendarTokens: CalendarTokensRepo
     private mainWindow?: BrowserWindow;
 
     private TOKEN_ROW_PREFIX = "google_calendar_";
@@ -44,6 +48,7 @@ export class AuthService extends EventEmitter {
 
         this.dbService = opts.db;
         this.mainWindow = opts.mainWindow;
+        this.calendarTokens = new CalendarTokensRepo(opts.db.getDb());
     }
 
     /** Sign in with magic link */
@@ -313,93 +318,90 @@ export class AuthService extends EventEmitter {
     }
 
     // Save tokens (update to save per-user key and expiry)
-    async saveCalendarTokens(tokenData: any, userId: string) {
-        const orm = this.dbService.getOrm();
-        if (!userId) throw new Error("userId required to save calendar tokens");
+    async saveCalendarTokens(tokenData, userId) {
+        if (!userId) throw new Error("userId required");
 
-        // compute expiry time (expires_in from google) - keep ms
+        const orm = this.dbService.getOrm();
+
         if (tokenData.expires_in) {
             tokenData.expires_at = Date.now() + tokenData.expires_in * 1000;
         }
 
-        const encrypted = AES.encrypt(JSON.stringify(tokenData), this.encryptionKey).toString();
+        const encrypted = AES.encrypt(
+            JSON.stringify(tokenData),
+            this.encryptionKey
+        ).toString();
 
-        const rowId = this.TOKEN_ROW_PREFIX + userId;
-        await orm.insert(localSession).values({
-            id: rowId,
-            session_encrypted: encrypted
-        }).onConflictDoUpdate({
-            target: localSession.id,
-            set: { session_encrypted: encrypted }
-        });
+        /** CURRENT USER storage */
+        await orm.insert(localSession)
+            .values({ id: this.TOKEN_ROW_PREFIX + userId, session_encrypted: encrypted })
+            .onConflictDoUpdate({ target: localSession.id, set: { session_encrypted: encrypted } });
 
-        // fetch primary calendar and update user profile (same as you do)
+        /** BACKGROUND storage */
+        this.calendarTokens.upsert(userId, encrypted);
+
         const calendarId = await this.fetchPrimaryCalendar(tokenData.access_token);
 
-        const payload = {
+        await this.updateCalendarInfo({
             id: userId,
             google_refresh_token: tokenData.refresh_token || (await this.getUserById(userId)).google_refresh_token,
             google_calendar_id: calendarId,
             calendar_sync_enabled: 1,
-            last_calendar_sync: Date.now()
-        };
+            last_calendar_sync: Date.now(),
+        });
 
-        await this.updateCalendarInfo(payload);
         return calendarId;
     }
 
 // read tokens blob for a given user
     async getCalendarTokens(userId: string) {
-        const orm = this.dbService.getOrm();
-        const rowId = this.TOKEN_ROW_PREFIX + userId;
         try {
-            const row: any = await orm.select().from(localSession).where(eq(localSession.id, rowId)).limit(1).get(); // adapt to query API
+            const row = this.calendarTokens.get(userId);
             if (!row) return null;
-            const decrypted = AES.decrypt(row.session_encrypted, this.encryptionKey).toString(Utf8);
-            const tokenData = JSON.parse(decrypted);
-            return tokenData;
-        } catch (err) {
-            console.warn("[AuthService] getCalendarTokens:", err);
+
+            const decrypted = AES.decrypt(
+                row.session_encrypted,
+                this.encryptionKey
+            ).toString(Utf8);
+
+            return JSON.parse(decrypted);
+        } catch (e) {
+            console.warn("[AuthService] getCalendarTokens:", e);
             return null;
         }
     }
 
 // Refresh access token using refresh_token, store new tokens (preserve refresh_token if not returned)
     async refreshAccessToken(userId: string, tokenData: any) {
-        if (!tokenData?.refresh_token) throw new Error("No refresh_token available to refresh access token");
+        if (!tokenData?.refresh_token)
+            throw new Error("No refresh_token available");
 
         const body = new URLSearchParams({
-            client_id: process.env.GOOGLE_CLIENT_ID!,
-            client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
             grant_type: "refresh_token",
             refresh_token: tokenData.refresh_token
-        }).toString();
+        });
 
         const res = await fetch("https://oauth2.googleapis.com/token", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body
+            body: body.toString()
         });
 
         const fresh = await res.json();
-        if (fresh.error) throw new Error(`Refresh token failed: ${JSON.stringify(fresh)}`);
+        if (fresh.error) throw new Error(JSON.stringify(fresh));
 
-        // google returns access_token, expires_in, maybe scope, maybe token_type
         const merged = {
             ...tokenData,
             access_token: fresh.access_token,
             expires_in: fresh.expires_in,
-            expires_at: fresh.expires_in ? Date.now() + fresh.expires_in * 1000 : tokenData.expires_at
+            refresh_token: fresh.refresh_token || tokenData.refresh_token,
+            expires_at: Date.now() + fresh.expires_in * 1000
         };
 
-        // save back (re-use save path)
-        const rowId = this.TOKEN_ROW_PREFIX + userId;
         const encrypted = AES.encrypt(JSON.stringify(merged), this.encryptionKey).toString();
-        const orm = this.dbService.getOrm();
-        await orm.insert(localSession).values({ id: rowId, session_encrypted: encrypted }).onConflictDoUpdate({
-            target: localSession.id,
-            set: { session_encrypted: encrypted }
-        });
+        this.calendarTokens.upsert(userId, encrypted);
 
         return merged;
     }
@@ -417,15 +419,36 @@ export class AuthService extends EventEmitter {
 
         if (!tokens) throw new Error("No calendar tokens available");
 
-        // If we have expires_at and it's in future minus 60s, return
-        if (tokens.access_token && tokens.expires_at && tokens.expires_at > Date.now() + 60 * 1000) {
-            return tokens;
-        }
+        try {
+            // If we have expires_at and it's in future minus 60s, return
+            if (tokens.access_token && tokens.expires_at && tokens.expires_at > Date.now() + 60 * 1000) {
+                return tokens;
+            }
 
-        // otherwise refresh using refresh_token
-        if (!tokens.refresh_token) throw new Error("No refresh_token to refresh access token");
-        const refreshed = await this.refreshAccessToken(userId, tokens);
-        return refreshed;
+            // otherwise refresh using refresh_token
+            if (!tokens.refresh_token) throw new Error("No refresh_token to refresh access token");
+            return await this.refreshAccessToken(userId, tokens);
+        } catch (err) {
+            // CHECK FOR TOKEN INVALIDATION
+            if (err.message.includes("invalid_grant")) {
+                console.warn("[Calendar] Refresh token invalid. Auto-disconnecting user:", userId);
+                const payload = {
+                    user_id: userId,
+                    type: "calendar_token_invalid",
+                    title: "Google Calendar Sync Disconnected",
+                    message: "Your Google Calendar connection expired or was revoked. Please reconnect it to resume syncing.",
+                    data: {reason: "invalid_grant"}
+                }
+
+                // 1. auto disconnect
+                await this.handleCalendarDisconnect(userId);
+
+                // 2. create notification for that user
+                await this.dbService.createNotification(payload);
+            }
+
+            throw err;
+        }
     }
 
     async fetchPrimaryCalendar(accessToken: string) {
@@ -435,5 +458,50 @@ export class AuthService extends EventEmitter {
         const data = await res.json();
         const primary = data.items.find((c: any) => c.primary);
         return primary?.id || data.items[0]?.id;
+    }
+
+    async handleCalendarDisconnect(userId: string) {
+        if (!userId) return;
+        const db = this.dbService.getDb();
+        const user = this.dbService.getUserById(userId);
+        if (!user) return;
+
+        // 1. Remove tokens and disable calendar sync
+        await db!.prepare(`
+        UPDATE users
+        SET 
+            google_refresh_token = ?,
+            google_calendar_id = ?,
+            calendar_sync_enabled = ?,
+            last_calendar_sync = ?
+        WHERE id = ?
+    `).run(null, null, 0, null, userId);
+        await db!.prepare(`DELETE FROM calendar_tokens WHERE user_id = ?`).run(userId);
+
+        const payload = {
+            ...user,
+            calendar_sync_enabled: 0,
+            last_calendar_sync: null,
+            google_calendar_id: null,
+            google_refresh_token: null
+        }
+        await db!.prepare(`
+        INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+        VALUES (?, ?, ?, ?, ?, ?, 0)`)
+        .run(uuidv4(), "users", userId, 1, JSON.stringify(payload), Date.now());
+
+        // 2. Optional: Clean local calendar events (if desired)
+        // await orm.execute(`DELETE FROM calendar_events WHERE user_id = ?`, [userId]);
+
+        // 3. Optional: Add audit log
+        await this.dbService.logEvent({
+            actor: userId,
+            action: "google-calendar:disconnect",
+            object_type: "user",
+            object_id: userId,
+            payload: { disconnected: true },
+        });
+
+        console.log(`[AuthService] Google Calendar disconnected for user ${userId}`);
     }
 }

@@ -76,6 +76,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     getTeam: (teamId) => ipcRenderer.invoke('db:getTeam', teamId),
     updateTeam: (payload) => ipcRenderer.invoke('db:updateTeam', payload),
     pullRemoteUpdates: () => ipcRenderer.invoke('db:originPull'),
+    pullRemoteUpdatesForce: () => ipcRenderer.invoke('db:originPullForce', true),
     rawQuery: (sql: string, params?: any[]) => ipcRenderer.invoke("raw:query", sql, params),
     onPullUpdate: (cb: (data: any) => void) => {
         const listener = (_event: any, payload: any) => cb(payload);

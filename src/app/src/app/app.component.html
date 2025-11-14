@@ -71,9 +71,19 @@
           }">
             🔁 {{ s.label }}
           </span>
-          <button *ngIf="s.online" mat-icon-button color="warn" (click)="pullOrigin()" matTooltip="This will overwrite your local changes">
+          <button *ngIf="s.online" mat-icon-button color="warn" [matMenuTriggerFor]="menu">
             <mat-icon>sync</mat-icon>
           </button>
+          <mat-menu #menu="matMenu">
+            <button mat-menu-item (click)="pullOrigin()">
+              <mat-icon>sync</mat-icon>
+              <span>Sync</span>
+            </button>
+            <button mat-menu-item (click)="pullOriginForce()" matTooltip="This will overwrite your local changes" style="color: #991b1b">
+              <mat-icon>cloud_sync</mat-icon>
+              <span>Force Sync</span>
+            </button>
+          </mat-menu>
         </div>
 
         <button mat-icon-button>

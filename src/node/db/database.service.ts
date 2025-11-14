@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import Database, {RunResult} from "better-sqlite3";
 import {drizzle} from "drizzle-orm/better-sqlite3";
 import fs from "fs";
 import crypto from "crypto";
@@ -89,6 +89,12 @@ export class DatabaseService {
                                                  session_encrypted TEXT
       );
 
+      CREATE TABLE IF NOT EXISTS calendar_tokens (
+                                                   user_id TEXT PRIMARY KEY,
+                                                   session_encrypted TEXT NOT NULL,
+                                                   updated_at INTEGER NOT NULL
+      );
+
       CREATE TABLE IF NOT EXISTS tasks (
         id TEXT PRIMARY KEY,
         project_id TEXT,
@@ -173,6 +179,20 @@ export class DatabaseService {
                                                 start_ts INTEGER,
                                                 duration_minutes INTEGER,
                                                 created_at INTEGER
+      );
+
+      CREATE TABLE IF NOT EXISTS notifications (
+                                   id TEXT PRIMARY KEY,
+
+                                   user_id TEXT NOT NULL,
+                                   type TEXT NOT NULL,              -- e.g., "task_assigned", "mention", "calendar_token_invalid"
+                                   title TEXT NOT NULL,
+                                   message TEXT NOT NULL,
+                                   data TEXT,  -- extra metadata
+
+                                   read INTEGER NOT NULL DEFAULT 0,
+                                   created_at INTEGER NOT NULL,      -- timestamp (ms)
+                                   updated_at INTEGER NOT NULL
       );
     `);
   }
@@ -821,5 +841,24 @@ export class DatabaseService {
     VALUES (?, ?, ?, ?, ?, ?, 0)
   `);
     revStmt.run(uuidv4(), 'calendar_events', eventId, 1, JSON.stringify({ deleted: true }), Date.now());
+  }
+
+// NOTIFICATIONS
+  public createNotification(payload: any) {
+    const now = Date.now();
+    const id = payload.id || uuidv4();
+    this.db!.prepare(`
+      INSERT INTO notifications (id, user_id, type, title, message, data, read, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
+    `).run(id, payload.user_id, payload.type, payload.title, payload.message, JSON.stringify(payload.data), now, now);
+
+    payload.id = id;
+    payload.created_at = now;
+    payload.updated_at = now;
+    this.db!.prepare(`
+      INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+      VALUES (?, ?, ?, ?, ?, ?, 0)
+    `).run(uuidv4(), 'notifications', id, 1, JSON.stringify(payload), now);
+    return { ...payload, created_at: now, updated_at: now };
   }
 }
