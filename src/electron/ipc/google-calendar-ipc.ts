@@ -52,24 +52,34 @@ export function registerGoogleCalendarIPC(authService: AuthService, dbService: D
     });
 
     ipcMain.handle('google-calendar:disconnect', async (_, userId: string|null) => {
-        const orm = dbService.getOrm();
-        const originUser = userId ? await authService.getUserById(userId) : authService.getCurrentUser()
-        if (!originUser.user) return { success: false };
-        await orm.update(users)
-            .set({ calendar_sync_enabled: 0, google_refresh_token: '', google_calendar_id: '' })
-            .where(eq(users.id, originUser.user.id));
-        await dbService.logEvent({
-            actor: currentUserId,
-            action: "google-calendar:disconnect",
-            object_type: "user",
-            object_id: userId
-        })
-        return { success: true };
+        try {
+            if (!userId) throw new Error("Missing userId for disconnect");
+
+            // stop sync loop for safety
+            calendarSync.stop();
+
+            // clean up all Google calendar tokens & flags
+            await authService.handleCalendarDisconnect(userId);
+
+            // mark all calendar-related revisions as synced/stale
+            await dbService.query(`
+                UPDATE revisions
+                SET synced = 1
+                WHERE object_type = 'calendar_events'
+            `);
+
+            console.log(`[GoogleCalendar] Disconnected calendar for user ${userId}`);
+
+            return { success: true, message: "Google Calendar disconnected successfully." };
+        } catch (err) {
+            console.error("[GoogleCalendar] Disconnect failed", err);
+            return { success: false, error: err.message };
+        }
     });
 
     ipcMain.handle('google-calendar:get-status', async (_, userId: string|null) => {
         const originUser = userId ? await authService.getUserById(userId) : authService.getCurrentUser()
-        if (!userId && !originUser.user) return { connected: false };
+        if (!userId && !originUser) return { connected: false };
         if (!originUser) return { connected: false };
         const u = originUser;
         return {

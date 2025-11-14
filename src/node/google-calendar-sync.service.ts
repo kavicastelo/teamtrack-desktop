@@ -1,6 +1,5 @@
 import fetch from 'node-fetch';
 import { DatabaseService } from './db/database.service.js';
-import crypto from 'crypto';
 import {users} from "../drizzle/shema";
 import {AuthService} from "../electron/services/auth.service";
 import {eq} from "drizzle-orm";
@@ -8,9 +7,13 @@ import {EventEmitter} from "events";
 
 export class GoogleCalendarSyncService extends EventEmitter {
     private interval: NodeJS.Timeout | null = null;
-    private readonly SYNC_INTERVAL = 1000 * 60 * 2; // 2 min
+    private readonly DEFAULT_INTERVAL_MS = Number(process.env.CALENDAR_SYNC_INTERVAL_MS) || 5 * 60 * 1000; // default 5min
     private db: any
     private auth: any
+
+    // per-user refresh locks to avoid concurrent refresh races
+    private refreshLocks: Map<string, Promise<any>> = new Map();
+    private readonly CONCURRENCY = 3;
 
     constructor(private dbService: DatabaseService, private authService: AuthService) {
         super();
@@ -20,9 +23,16 @@ export class GoogleCalendarSyncService extends EventEmitter {
 
     start() {
         if (this.interval) return;
-        this.interval = setInterval(() => this.runSync(), this.SYNC_INTERVAL);
+        // cleanup once at start
+        this.cleanupFailedCalendarRevisions().catch(err => console.error("cleanup failed", err));
+
+        this.interval = setInterval(() => {
+            this.runSync().catch(err => console.error("[CalendarSync] runSync failed", err));
+        }, this.DEFAULT_INTERVAL_MS);
+
         console.log('[CalendarSync] Started background calendar worker');
-        this.runSync().then(); // run once immediately
+        // run one immediate pass (not awaited)
+        this.runSync().catch(err => console.error("[CalendarSync] initial runSync failed", err));
     }
 
     stop() {
@@ -31,32 +41,31 @@ export class GoogleCalendarSyncService extends EventEmitter {
     }
 
     async runSync() {
-        const intervalMs = Number(process.env.CALENDAR_SYNC_INTERVAL_MS) || 5 * 60 * 1000; // default 5min
-        this.interval = setInterval(async () => {
-            try {
-                const orm = this.db.getOrm();
-                // query users table for users with calendar_sync_enabled
-                const allUsers = await orm.select().from(users).where(eq(users.calendar_sync_enabled, 1));
-                for (const u of allUsers) {
-                    try {
-                        await this.syncGoogleToLocal(u.id);
-                    } catch (err) {
-                        console.error(`[BackgroundSync] user ${u.id} sync failed`, err);
-                    }
-                }
-            } catch (err) {
-                console.error("[BackgroundSync] loop error", err);
-            }
-        }, intervalMs);
+        try {
+            const orm = this.db.getOrm();
+            const usersToSync = await orm.select()
+                .from(users)
+                .where(eq(users.calendar_sync_enabled, 1));
+
+            await this.runConcurrent(usersToSync, this.CONCURRENCY, async (u: any) => {
+                await this.syncGoogleToLocal(u.id);
+            });
+        } catch (err) {
+            console.error("[BackgroundSync] runSync error:", err);
+        }
     }
 
     // sync google -> local for a user
     async syncGoogleToLocal(userId: string) {
         try {
-            const tokens = await this.auth.ensureAccessToken(userId);
+            // ensureAccessToken should use the per-user lock below to avoid concurrent refreshes
+            const tokens = await this.ensureAccessTokenWithLock(userId);
             // get calendar id from user's profile
             const user = await this.auth.getUserById(userId);
-            if (!user) throw new Error("No user found");
+            if (!user || !user.calendar_sync_enabled) {
+                console.warn(`[CalendarSync] Skipping user ${userId} — calendar disabled or user missing`);
+                return;
+            }
             const calendarId = user.google_calendar_id;
             if (!calendarId) throw new Error("No calendar_id for user");
 
@@ -81,9 +90,7 @@ export class GoogleCalendarSyncService extends EventEmitter {
 
                 const items = data.items || [];
                 for (const ev of items) {
-                    // skip cancelled or no start/end
                     if (ev.status === 'cancelled') {
-                        // optionally delete local event
                         await this.db.deleteEventLocal?.(ev.id);
                         continue;
                     }
@@ -102,8 +109,12 @@ export class GoogleCalendarSyncService extends EventEmitter {
             });
 
             return collected;
-        } catch (err) {
-            console.error("[GoogleSync] syncGoogleToLocal error", err);
+        } catch (err: any) {
+            if (err.message && err.message.includes("invalid_grant")) {
+                console.log(`[CalendarSync] Token invalid for user ${userId}. Auto-disconnected.`);
+                // don't rethrow so the background worker continues
+                return;
+            }
             throw err;
         }
     }
@@ -146,5 +157,60 @@ export class GoogleCalendarSyncService extends EventEmitter {
 
         await this.db.deleteEventLocal(eventId);
         return { ok: true };
+    }
+
+    // wrapper to serialize refresh per user
+    private async ensureAccessTokenWithLock(userId: string) {
+        // if a refresh is already in flight for this user, wait for it
+        const existing = this.refreshLocks.get(userId);
+        if (existing) {
+            return existing;
+        }
+
+        // create a promise for the ensure operation and store as lock
+        const p = (async () => {
+            try {
+                // delegate to authService.ensureAccessToken (unchanged)
+                return await this.auth.ensureAccessToken(userId);
+            } finally {
+                // clear lock
+                this.refreshLocks.delete(userId);
+            }
+        })();
+
+        this.refreshLocks.set(userId, p);
+        return p;
+    }
+
+    async runConcurrent<T>(items: T[], limit: number, fn: (item: T) => Promise<any>) {
+        const queue = [...items];
+        const running = new Set();
+
+        const next = async () => {
+            if (queue.length === 0) return;
+            const item = queue.shift();
+            const p = fn(item)
+                .catch(err => console.error("sync error", err))
+                .finally(() => running.delete(p));
+
+            running.add(p);
+
+            if (running.size < limit) next();
+            await p;
+            if (queue.length > 0) next();
+        };
+
+        const starters = Math.min(limit, queue.length);
+        for (let i = 0; i < starters; i++) await next();
+
+        await Promise.all(running);
+    }
+
+    async cleanupFailedCalendarRevisions() {
+        await this.dbService.query(`
+            DELETE FROM revisions
+            WHERE object_type = 'calendar_events'
+            AND synced = -1
+        `);
     }
 }

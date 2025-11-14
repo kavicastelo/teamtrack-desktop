@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import {boolean} from "drizzle-orm/pg-core";
 
 export const attachments = sqliteTable('attachments', {
     id: text('id').primaryKey(),
@@ -54,3 +55,15 @@ export const calendar_events = sqliteTable('calendar_events', {
     updated_at: integer('updated_at').notNull(),
     raw: text('raw'),
 })
+
+export const notifications = sqliteTable('notifications', {
+    id: text('id').primaryKey(),
+    user_id: text('user_id').notNull(),
+    type: text('type').notNull(),
+    title: text('title').notNull(),
+    message: text('message'),
+    data: text('data'),
+    read: integer('read').notNull().default(0),
+    created_at: integer('created_at').notNull(),
+    updated_at: integer('updated_at').notNull(),
+});

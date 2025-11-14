@@ -3,12 +3,13 @@ import EventEmitter from "events";
 import {app, BrowserWindow, shell, dialog} from "electron";
 import path from "path";
 import fs from "fs";
-import {attachments, revisions} from "../drizzle/shema";
+import {attachments, revisions, users} from "../drizzle/shema";
 import {eq} from "drizzle-orm";
 import {v4 as uuidv4} from "uuid";
 import {URL} from "url";
 import dns from "dns/promises";
 import Store from "electron-store";
+
 const store = new Store();
 
 export class SupabaseSyncService extends EventEmitter {
@@ -74,7 +75,7 @@ export class SupabaseSyncService extends EventEmitter {
         try {
             if (supabaseUrl) host = new URL(supabaseUrl).hostname || host;
         } catch {
-            this.sendToUI("sync:warning", {message: "Invalid Supabase URL; using fallback host: "+host});
+            this.sendToUI("sync:warning", {message: "Invalid Supabase URL; using fallback host: " + host});
         }
 
         let consecutiveFailures = 0;
@@ -292,12 +293,14 @@ export class SupabaseSyncService extends EventEmitter {
         } else if (table === 'users') {
             try {
                 const sql = `
-                    INSERT INTO users (id, email, full_name, role, avatar_url, timezone, calendar_sync_enabled, google_calendar_id, available_times, updated_at, invited_at, google_refresh_token, last_calendar_sync)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO 
+                    INSERT INTO users (id, email, full_name, role, avatar_url, timezone, calendar_sync_enabled,
+                                       google_calendar_id, available_times, updated_at, invited_at,
+                                       google_refresh_token, last_calendar_sync)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
                     UPDATE SET
                         email=excluded.email,
                         full_name=excluded.full_name,
-                        role=excluded.role,
+                        role =excluded.role,
                         avatar_url=excluded.avatar_url,
                         timezone=excluded.timezone,
                         calendar_sync_enabled=excluded.calendar_sync_enabled,
@@ -337,7 +340,7 @@ export class SupabaseSyncService extends EventEmitter {
                         id=excluded.id,
                         team_id=excluded.team_id,
                         user_id=excluded.user_id,
-                        role=excluded.role,
+                        role =excluded.role,
                         created_at=excluded.created_at
                 `;
                 this.dbService.query(sql, [
@@ -360,8 +363,9 @@ export class SupabaseSyncService extends EventEmitter {
                         id=excluded.id,
                         user_id=excluded.user_id,
                         calendar_id=excluded.calendar_id,
-                        start=excluded.start,
-                        end=excluded.end,
+                    start =excluded.start,
+                    end
+                    =excluded.end,
                         summary=excluded.summary,
                         updated_at=excluded.updated_at
                 `;
@@ -386,7 +390,7 @@ export class SupabaseSyncService extends EventEmitter {
                     UPDATE SET
                         id=excluded.id,
                         actor=excluded.actor,
-                        action=excluded.action,
+                        action =excluded.action,
                         object_type=excluded.object_type,
                         object_id=excluded.object_id,
                         payload=excluded.payload,
@@ -417,7 +421,7 @@ export class SupabaseSyncService extends EventEmitter {
                         taskId=excluded.taskId,
                         filename=excluded.filename,
                         mimetype=excluded.mimetype,
-                        size=excluded.size,
+                        size =excluded.size,
                         supabase_path=excluded.supabase_path,
                         created_at=excluded.created_at
                 `;
@@ -439,7 +443,7 @@ export class SupabaseSyncService extends EventEmitter {
 
     /** 📡 Subscribe to realtime task changes */
     async startRealtimeSub() {
-        const channels = ["tasks", "revisions", "projects", "teams", "attachments", "events", "users", "team_members", "calendar_events"];
+        const channels = ["tasks", "revisions", "projects", "teams", "attachments", "events", "users", "team_members", "calendar_events", "time_entries", "heartbeats", "notifications"];
 
         for (const channel of channels) {
             try {
@@ -472,6 +476,7 @@ export class SupabaseSyncService extends EventEmitter {
 
     /** Pull new/updated records from Supabase */
     async pullRemoteUpdates(tabel: string) {
+        const userId = store.get('currentUserId');
         if (tabel === 'tasks') {
             try {
                 const {
@@ -486,7 +491,8 @@ export class SupabaseSyncService extends EventEmitter {
                     if (!local || new Date(record.updated_at).getTime() > new Date(local.updated_at).getTime()) {
                         this.dbService.db
                             .prepare(
-                                `INSERT INTO tasks (id, project_id, title, description, status, assignee, updated_at, created_at, due_date, priority)
+                                `INSERT INTO tasks (id, project_id, title, description, status, assignee, updated_at,
+                                                    created_at, due_date, priority)
                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
                                 UPDATE SET
                                     project_id=excluded.project_id,
@@ -622,7 +628,8 @@ export class SupabaseSyncService extends EventEmitter {
                     if (!local || new Date(record.created_at).getTime() > new Date(local.created_at).getTime()) {
                         this.dbService.db
                             .prepare(
-                                `INSERT INTO attachments (id, uploaded_by, taskId, filename, mimetype, size, supabase_path,
+                                `INSERT INTO attachments (id, uploaded_by, taskId, filename, mimetype, size,
+                                                          supabase_path,
                                                           created_at)
                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
                                 UPDATE SET
@@ -630,7 +637,7 @@ export class SupabaseSyncService extends EventEmitter {
                                     uploaded_by=excluded.uploaded_by,
                                     filename=excluded.filename,
                                     mimetype=excluded.mimetype,
-                                    size=excluded.size,
+                                    size =excluded.size,
                                     supabase_path=excluded.supabase_path,
                                     created_at=excluded.created_at`
                             )
@@ -644,11 +651,12 @@ export class SupabaseSyncService extends EventEmitter {
                 this.sendToUI("sync:error", {message: "Failed to pull attachments", error: err});
             }
         } else if (tabel === 'events') {
+            if (!userId) return;
             try {
                 const {
                     data,
                     error
-                } = await this.client.from("events").select("*").order("created_at", {ascending: true});
+                } = await this.client.from("events").select("*").eq('actor', userId).limit(500).order("created_at", {ascending: true});
                 if (error) throw error;
                 if (!Array.isArray(data)) return;
 
@@ -661,7 +669,7 @@ export class SupabaseSyncService extends EventEmitter {
                                  VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
                                 UPDATE SET
                                     actor=excluded.actor,
-                                    action=excluded.action,
+                                    action =excluded.action,
                                     object_type=excluded.object_type,
                                     object_id=excluded.object_id,
                                     payload=excluded.payload,
@@ -690,12 +698,15 @@ export class SupabaseSyncService extends EventEmitter {
                     if (!local || new Date(record.updated_at).getTime() > new Date(local.updated_at).getTime()) {
                         this.dbService.db
                             .prepare(
-                                `INSERT INTO users (id, email, full_name, role, avatar_url, timezone, calendar_sync_enabled, google_calendar_id, available_times, updated_at, invited_at, google_refresh_token, last_calendar_sync, weekly_capacity_hours)
+                                `INSERT INTO users (id, email, full_name, role, avatar_url, timezone,
+                                                    calendar_sync_enabled, google_calendar_id, available_times,
+                                                    updated_at, invited_at, google_refresh_token, last_calendar_sync,
+                                                    weekly_capacity_hours)
                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
                                 UPDATE SET
                                     email=excluded.email,
                                     full_name=excluded.full_name,
-                                    role=excluded.role,
+                                    role =excluded.role,
                                     avatar_url=excluded.avatar_url,
                                     timezone=excluded.timezone,
                                     calendar_sync_enabled=excluded.calendar_sync_enabled,
@@ -735,7 +746,7 @@ export class SupabaseSyncService extends EventEmitter {
                                 UPDATE SET
                                     team_id=excluded.team_id,
                                     user_id=excluded.user_id,
-                                    role=excluded.role,
+                                    role =excluded.role,
                                     created_at=excluded.created_at`
                             )
                             .run(record.id, record.team_id, record.user_id, record.role, record.created_at);
@@ -766,8 +777,9 @@ export class SupabaseSyncService extends EventEmitter {
                                 UPDATE SET
                                     user_id=excluded.user_id,
                                     calendar_id=excluded.calendar_id,
-                                    start=excluded.start,
-                                    end=excluded.end,
+                                start =excluded.start,
+                                end
+                                =excluded.end,
                                     summary=excluded.summary,
                                     updated_at=excluded.updated_at,
                                     raw=excluded.raw`
@@ -796,7 +808,8 @@ export class SupabaseSyncService extends EventEmitter {
                     if (!local || new Date(record.created_at).getTime() > new Date(local.created_at).getTime()) {
                         this.dbService.db
                             .prepare(
-                                `INSERT INTO time_entries (id, user_id, project_id, task_id, start_ts, duration_minutes, created_at)
+                                `INSERT INTO time_entries (id, user_id, project_id, task_id, start_ts, duration_minutes,
+                                                           created_at)
                                  VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
                                 UPDATE SET
                                     user_id=excluded.user_id,
@@ -816,50 +829,109 @@ export class SupabaseSyncService extends EventEmitter {
                 this.sendToUI("sync:error", {message: "Failed to pull time entries", error: err});
             }
         } else if (tabel === 'heartbeats') {
-            const userId = store.get('currentUserId');
             if (!userId) return;
+            const limit = 500;
+            let offset = 0;
+            let totalFetched = 0;
             try {
-                const {
-                    data,
-                    error
-                } = await this.client.from("heartbeats").select("*").order("timestamp", {ascending: true});
-                if (error) throw error;
-                if (!Array.isArray(data)) return;
+                while (true) {
+                    const {data, error} = await this.client
+                        .from("heartbeats")
+                        .select("*")
+                        .order("timestamp", {ascending: true})
+                        .range(offset, offset + limit - 1);
 
-                for (const record of data) {
-                    // const local = this.dbService.db.prepare("SELECT * FROM heartbeats WHERE id = ? AND user_id = ?").get(record.id, userId);
-                    const local = this.dbService.db.prepare("SELECT * FROM heartbeats WHERE id = ?").get(record.id);
-                    if (!local || new Date(record.timestamp).getTime() > new Date(local.timestamp).getTime()) {
-                        this.dbService.db
-                            .prepare(
-                                `INSERT INTO heartbeats (id, user_id, timestamp, duration_ms, source, platform, app, title, metadata, team_id, last_seen)
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                    if (error) throw error;
+                    if (!Array.isArray(data) || data.length === 0) break;
+
+                    for (const record of data) {
+                        const local = this.dbService.db.prepare("SELECT * FROM heartbeats WHERE id = ?").get(record.id);
+                        if (!local || new Date(record.timestamp).getTime() > new Date(local.timestamp).getTime()) {
+                            this.dbService.db.prepare(`
+                                INSERT INTO heartbeats (id, user_id, timestamp, duration_ms, source, platform, app,
+                                                        title,
+                                                        metadata, team_id, last_seen)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
                                 UPDATE SET
                                     user_id=excluded.user_id,
-                                    timestamp=excluded.timestamp,
+                                    timestamp =excluded.timestamp,
                                     duration_ms=excluded.duration_ms,
-                                    source=excluded.source,
+                                    source =excluded.source,
                                     platform=excluded.platform,
                                     app=excluded.app,
                                     title=excluded.title,
                                     metadata=excluded.metadata,
                                     team_id=excluded.team_id,
-                                    last_seen=excluded.last_seen`
+                                    last_seen=excluded.last_seen
+                            `).run(
+                                record.id, record.user_id, record.timestamp, record.duration_ms,
+                                record.source, record.platform, record.app, record.title,
+                                record.metadata, record.team_id, record.last_seen
+                            );
+                        }
+                    }
+
+                    totalFetched += data.length;
+                    this.sendToUI("sync:pull", {count: totalFetched});
+
+                    // Stop when fewer than limit entries returned
+                    if (data.length < limit) break;
+
+                    offset += limit;
+                }
+
+                this.sendToUI("sync:pull", {count: totalFetched});
+                this.sendToUI("sync:success", {message: `Pulled ${totalFetched} heartbeats`});
+            } catch (err) {
+                this.sendToUI("sync:error", {message: "Failed to pull heartbeats", error: err});
+            }
+        } else if (tabel === 'notifications') {
+            try {
+                const {
+                    data,
+                    error
+                } = await this.client.from("notifications").select("*").eq('user_id', userId).order('created_at').order("created_at", {ascending: true});
+                if (error) throw error;
+                if (!Array.isArray(data)) return;
+
+                for (const record of data) {
+                    const local = this.dbService.db.prepare("SELECT * FROM notifications WHERE id = ?").get(record.id);
+                    if (!local || new Date(record.created_at).getTime() > new Date(local.created_at).getTime()) {
+                        this.dbService.db
+                            .prepare(
+                                `INSERT INTO notifications (id, user_id, type, title, message, data, created_at, updated_at, read)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+                                UPDATE SET
+                                    user_id=excluded.user_id,
+                                    type=excluded.type,
+                                    title=excluded.title,
+                                    message=excluded.message,
+                                    data=excluded.data,
+                                    created_at=excluded.created_at,
+                                    updated_at=excluded.updated_at,
+                                    read=excluded.read`
                             )
-                            .run(record.id, record.user_id, record.timestamp, record.duration_ms, record.source, record.platform, record.app, record.title, record.metadata, record.team_id, record.last_seen);
+                            .run(record.id, record.user_id, record.type, record.title, record.message, record.data, record.created_at, record.updated_at, record.read);
                     }
                 }
 
                 this.sendToUI("sync:pull", {count: data.length});
-                this.sendToUI("sync:success", {message: "Pulled " + data.length + " heartbeats"});
+                this.sendToUI("sync:success", {message: "Pulled " + data.length + " notifications"});
             } catch (err) {
-                this.sendToUI("sync:error", {message: "Failed to pull heartbeats", error: err});
+                this.sendToUI("sync:error", {message: "Failed to pull notifications", error: err});
             }
         }
     }
 
-    async pullAllRemoteUpdates() {
-        const channels = ["tasks", "projects", "teams", "revisions", "attachments", "events", "users", "team_members", "calendar_events", "time_entries", "heartbeats"];
+    async pullAllRemoteUpdates(force=false) {
+        const channels = ["tasks", "projects", "teams", "revisions", "attachments", "events", "users", "team_members", "calendar_events", "time_entries", "heartbeats", "notifications"];
+        const db = this.dbService.getDb();
+        if (force) {
+            // remove all local revisions and tables
+            for (const channel of channels) {
+                db.prepare(`DELETE FROM ${channel}`).run();
+            }
+        }
         for (const channel of channels) {
             await this.pullRemoteUpdates(channel);
         }
@@ -868,58 +940,74 @@ export class SupabaseSyncService extends EventEmitter {
     /** Push local revisions with retry queue */
     async pushLocalRevisions() {
         try {
-            const rows = this.dbService.query("SELECT * FROM revisions WHERE synced = 0 LIMIT 50");
+            const rows = this.dbService.query("SELECT * FROM revisions WHERE synced = 0 LIMIT 500"); // can safely increase batch size
             if (!rows || rows.length === 0) return;
 
-            // Define which object types are considered "background/system"
-            const silentTypes = new Set([
-                'heartbeats',
-                'calendar_events',
-                'time_entries',
-                'events'
-            ]);
+            // Define "background/system" object types
+            const silentTypes = new Set(["heartbeats", "calendar_events", "time_entries", "events", "notifications"]);
 
             // Separate into user vs system revisions
             const userRows = rows.filter(r => !silentTypes.has(r.object_type));
             const backgroundRows = rows.filter(r => silentTypes.has(r.object_type));
 
-            if (userRows.length)
+            if (userRows.length) {
                 this.sendToUI("sync:info", { message: `Pushing ${userRows.length} user revisions...` });
+            }
 
-            let backgroundCount = 0;
-
+            // Group revisions by object_type
+            const grouped = {};
             for (const r of rows) {
                 try {
                     const payload = JSON.parse(r.payload);
-                    const { error } = await this.client.from(r.object_type).upsert(payload, { onConflict: "id" });
-
-                    if (!error) {
-                        this.dbService.query("UPDATE revisions SET synced = 1 WHERE id = ?", [r.id]);
-                        if (!silentTypes.has(r.object_type)) {
-                            this.sendToUI("sync:success", { message: `Synced ${r.object_type} revision: ${r.id}` });
-                        } else {
-                            backgroundCount++;
-                        }
-                    } else {
-                        if (!silentTypes.has(r.object_type)) {
-                            this.sendToUI("sync:warning", { message: `Failed to sync ${r.object_type} revision: ${r.id}` });
-                        }
-                        this.queueRetry(r);
-                    }
+                    if (!grouped[r.object_type]) grouped[r.object_type] = [];
+                    grouped[r.object_type].push({ ...payload, _revision_id: r.id }); // include local id for tracking
                 } catch (err) {
-                    if (!silentTypes.has(r.object_type)) {
-                        this.sendToUI("sync:error", { message: `Failed to sync ${r.object_type} revision: ${r.id}`, error: err });
-                    }
                     this.queueRetry(r);
                 }
             }
 
-            // Summarized feedback for background revisions
+            let totalSynced = 0;
+            let backgroundCount = 0;
+
+            // Bulk upload per object type
+            for (const [objectType, records] of Object.entries(grouped)) {
+                if (!Array.isArray(records)) continue;
+
+                const { data, error } = await this.client
+                    .from(objectType)
+                    .upsert(records.map(r => {
+                        // remove internal revision id before uploading if not needed remotely
+                        const { _revision_id, ...rest } = r;
+                        return rest;
+                    }), { onConflict: "id" });
+
+                if (error) {
+                    // If the bulk upload fails, fallback to retry each record
+                    this.sendToUI("sync:warning", { message: `Bulk sync failed for ${objectType}: ${error.message}` });
+                    for (const rec of records) {
+                        this.queueRetry({ object_type: objectType, id: rec._revision_id });
+                    }
+                    continue;
+                }
+
+                // Mark all uploaded revisions as synced
+                const syncedIds = records.map(r => r._revision_id);
+                const placeholders = syncedIds.map(() => "?").join(",");
+                this.dbService.query(`UPDATE revisions SET synced = 1 WHERE id IN (${placeholders})`, syncedIds);
+
+                totalSynced += records.length;
+                if (silentTypes.has(objectType)) backgroundCount += records.length;
+                else this.sendToUI("sync:success", { message: `Synced ${records.length} ${objectType} revisions` });
+            }
+
             if (backgroundCount > 0) {
                 this.sendToUI("sync:summary", {
-                    message: `Synced ${backgroundCount} background revisions (${Array.from(silentTypes).join(', ')})`
+                    message: `Synced ${backgroundCount} background revisions (${Array.from(silentTypes).join(", ")})`
                 });
             }
+
+            if (totalSynced > 50)
+                this.sendToUI("sync:info", { message: `Push complete — ${totalSynced} total revisions synced.` });
 
         } catch (err) {
             this.sendToUI("sync:error", { message: "Failed to push local revisions", error: err });
@@ -929,25 +1017,40 @@ export class SupabaseSyncService extends EventEmitter {
     /** Retry mechanism with exponential backoff */
     private queueRetry(rev: any) {
         const retryCount = rev.retryCount || 0;
-        const delay = Math.min(60000, Math.pow(2, retryCount) * 1000);
+        const MAX_RETRIES = 3;
 
-        this.sendToUI("sync:info", {message: "Queuing retry for " + rev.id + " (in " + delay + " ms)"});
+        if (retryCount >= MAX_RETRIES) {
+            this.sendToUI("sync:warning", {
+                message: `Giving up on revision ${rev.id} after ${MAX_RETRIES} retries.`,
+            });
+            // Optionally mark it as failed permanently
+            this.dbService.query("UPDATE revisions SET synced = -1 WHERE id = ?", [rev.id]);
+            return;
+        }
+
+        const delay = Math.min(60000, Math.pow(2, retryCount) * 1000);
+        this.sendToUI("sync:info", {
+            message: `Retrying ${rev.id} (attempt ${retryCount + 1}/${MAX_RETRIES}) in ${delay / 1000}s`,
+        });
 
         setTimeout(async () => {
             try {
                 const payload = JSON.parse(rev.payload);
-                const {error} = await this.client.from(rev.object_type).upsert(payload, {onConflict: "id"});
+                const { error } = await this.client
+                    .from(rev.object_type)
+                    .upsert(payload, { onConflict: "id" });
 
                 if (!error) {
                     this.dbService.query("UPDATE revisions SET synced = 1 WHERE id = ?", [rev.id]);
-                    this.sendToUI("sync:success", {message: "Synced revision: " + rev.id});
+                    this.sendToUI("sync:success", { message: `Synced revision: ${rev.id}` });
                     return;
                 }
                 throw error;
             } catch (err) {
-                this.sendToUI("sync:error", {message: "Failed to sync revision: " + rev.id, error: err});
-                // schedule again
-                this.queueRetry({...rev, retryCount: retryCount + 1});
+                this.sendToUI("sync:error", {
+                    message: `Retry ${retryCount + 1} failed for ${rev.id}: ${err.message}`,
+                });
+                this.queueRetry({ ...rev, retryCount: retryCount + 1 });
             }
         }, delay);
     }
@@ -1009,11 +1112,11 @@ export class SupabaseSyncService extends EventEmitter {
 
     /** Download & let user choose where to save */
     async downloadAttachment(supabasePath: string) {
-        const { data, error } = await this.client.storage.from("attachments").download(supabasePath);
+        const {data, error} = await this.client.storage.from("attachments").download(supabasePath);
         if (error) throw error;
 
         const filename = path.basename(supabasePath);
-        const { canceled, filePath } = await dialog.showSaveDialog({
+        const {canceled, filePath} = await dialog.showSaveDialog({
             defaultPath: path.join(app.getPath("downloads"), filename),
             title: "Save Attachment",
         });

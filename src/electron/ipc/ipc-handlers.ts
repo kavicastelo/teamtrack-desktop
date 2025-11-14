@@ -314,6 +314,8 @@ export function registerIPCHandlers(services: {
     /** Sync **/
     ipcMain.handle("db:originPull", async (_) => syncService.pullAllRemoteUpdates());
 
+    ipcMain.handle("db:originPullForce", async (_) => syncService.pullAllRemoteUpdates(true));
+
     /** Google Calendar **/
     registerGoogleCalendarIPC(authService, dbService, calendarSync);
 

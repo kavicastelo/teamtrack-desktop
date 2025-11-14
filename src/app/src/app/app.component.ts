@@ -193,6 +193,10 @@ export class AppComponent implements OnInit, OnDestroy {
     this.ipc.pullRemoteUpdates().then();
   }
 
+  pullOriginForce() {
+    this.ipc.pullRemoteUpdatesForce().then();
+  }
+
   // ────────────────────────────────
   // OPEN PROFILE
   // ────────────────────────────────
