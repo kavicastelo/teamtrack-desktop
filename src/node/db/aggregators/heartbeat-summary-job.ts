@@ -22,11 +22,11 @@ export class HeartbeatSummaryJob {
         this.timer = undefined;
     }
 
-    async run() {
+    async run(force=false) {
         if (this.running) return;
         this.running = true;
         try {
-            const since = Date.now() - 48 * 60 * 60 * 1000; // 48h window incremental
+            const since = Date.now() - (force ? 336 : 48) * 60 * 60 * 1000; // 48h window incremental
             const rows: RunResult[] | any = this.dbs.query(`
         SELECT user_id, team_id,
                strftime('%Y-%m-%d', datetime(timestamp / 1000, 'unixepoch')) AS day,

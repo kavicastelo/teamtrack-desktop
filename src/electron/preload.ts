@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
         removeUser: (payload: any) => ipcRenderer.invoke('auth:removeUser', payload),
         signOut: () => ipcRenderer.invoke('auth:signOut'),
         updatePassword: (password: string) => ipcRenderer.invoke('auth:updatePassword', password),
+        updateDefaultTeam: (payload: any) => ipcRenderer.invoke('auth:updateDefaultTeam', payload),
         updateProfile: (profile: any) => ipcRenderer.invoke('db:updateProfile', profile),
     },
     calendarAPI: {
@@ -32,7 +33,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
         getTeamPulse: (teamId: string) => ipcRenderer.invoke('metrics:getTeamPulse', teamId),
         getActivityTimeline: (limit?: number) => ipcRenderer.invoke('metrics:getActivityTimeline', limit),
         getActivityTimeByUser: (userId?: string, limit?: number) => ipcRenderer.invoke('metrics:getActivityByUser', userId, limit),
-        getProjectHeatmap: (days?: number) => ipcRenderer.invoke('metrics:getProjectHeatmap', days),
+        getProjectHeatmap: (days?: number, teamId?: string) => ipcRenderer.invoke('metrics:getProjectHeatmap', days, teamId),
     },
     admin: {
         orgSummary() { return ipcRenderer.invoke('analytics:getOrgSummary') },

@@ -102,6 +102,17 @@ export function registerIPCHandlers(services: {
         })
         return user;
     });
+    ipcMain.handle('auth:updateDefaultTeam', async (_, payload) => {
+        const user = await authService.updateDefaultTeam(payload)
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "user:update_default_team",
+            object_type: "user",
+            object_id: currentUserId,
+            payload: user,
+        })
+        return user;
+    })
 
     ipcMain.handle('db:updateProfile', async (_, profile) => {
         const user = await authService.updateProfile(profile)

@@ -48,7 +48,7 @@ export class HeartbeatService {
                 app: app.getName() || 'MyApp',
                 title: getMainWindow()?.getTitle() || 'Main Window',
                 metadata: {},
-                team_id: this.authService.getCurrentTeam()?.id || null,
+                team_id: user.default_team_id || this.dbService.getCurrentTeam(user.id) || null,
                 last_seen: Date.now()
             };
         } else {

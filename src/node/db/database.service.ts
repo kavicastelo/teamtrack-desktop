@@ -6,8 +6,10 @@ import os from "os";
 import path from "path";
 import {v4 as uuidv4} from "uuid";
 import {ensureHeartbeatSummarySchema} from "./migrations/heartbeat-summary.migration";
+import Store from "electron-store";
 
 const ALGO = "aes-256-gcm";
+const store = new Store();
 
 function decryptBuffer(encrypted: Buffer, key: Buffer): Buffer {
   const iv = encrypted.subarray(0, 12);
@@ -73,6 +75,7 @@ export class DatabaseService {
                                          full_name TEXT,
                                          role TEXT,
                                          avatar_url TEXT,
+                                         default_team_id TEXT,
                                          timezone TEXT,
                                          calendar_sync_enabled INTEGER DEFAULT 0,
                                          google_calendar_id TEXT,
@@ -531,14 +534,14 @@ export class DatabaseService {
 
   userTeams(userId) {
     const stmt = this.db!.prepare(`
-    SELECT t.name
+    SELECT t.name, t.id
     FROM teams t
     INNER JOIN team_members tm ON t.id = tm.team_id
     WHERE tm.user_id = ?
   `);
 
     const rows = stmt.all(userId);
-    return rows.map((row: any) => row.name);
+    return rows.map((row: any) => row);
   }
 
   teamIds(userId) {
@@ -638,6 +641,29 @@ export class DatabaseService {
     this.db!.prepare(`
       UPDATE users SET full_name=?, avatar_url=?, timezone=?, weekly_capacity_hours=?, google_calendar_id=?, calendar_sync_enabled=?, available_times=? WHERE id=?
     `).run(payload.full_name, payload.avatar_url, payload.timezone, payload.weekly_capacity_hours, payload.google_calendar_id, payload.calendar_sync_enabled, payload.available_times, payload.id);
+
+    this.db!.prepare(`
+      INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+      VALUES (?, ?, ?, ?, ?, ?, 0)
+    `).run(uuidv4(), 'users', payload.id, 1, JSON.stringify(payload), now);
+
+    return { ...payload, updated_at: now };
+  }
+
+  public getCurrentTeam(id?: string): string | null {
+    const userId: any = id || store.get('currentUserId');
+    if (!userId) return;
+    const user: any = this.getUserById(userId);
+    if (!user) return;
+
+    return user?.default_team_id || this.teamIds(userId)[0] || null;
+  }
+
+  public updateDefaultTeam(payload: any) {
+    const now = Date.now();
+    this.db!.prepare(`
+      UPDATE users SET default_team_id=? WHERE id=?
+    `).run(payload.default_team_id, payload.id);
 
     this.db!.prepare(`
       INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)

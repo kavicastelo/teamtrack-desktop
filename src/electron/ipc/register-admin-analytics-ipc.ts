@@ -269,7 +269,7 @@ export function registerAdminAnalyticsIPC(dbService: DatabaseService, hbJob: Hea
      * analytics:forceRefreshSummaries
      */
     ipcMain.handle("analytics:forceRefreshSummaries", async () => {
-        await hbJob.run();
+        await hbJob.run(true);
         cache.clear();
         return { ok: true };
     });

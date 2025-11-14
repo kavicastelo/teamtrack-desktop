@@ -1,7 +1,10 @@
 import { ipcMain } from "electron";
 import { DatabaseService } from "../../node/db/database.service";
+import Store from "electron-store";
+const store = new Store();
 
 export function registerMetricsIPC(dbService: DatabaseService) {
+    const currentUserId = store.get('currentUserId');
 
     ipcMain.handle('metrics:getMyWork', async (_e, userId: string) => {
         const now = Date.now();
@@ -100,25 +103,27 @@ export function registerMetricsIPC(dbService: DatabaseService) {
     });
 
     ipcMain.handle('metrics:getActivityByUser', async (_e, userId: string, limit = 100) => {
-        const events = dbService.query(`
-      SELECT 'event' as kind, id, actor, action, object_type, object_id, payload, created_at as ts
-      FROM events
-      WHERE actor = ?
-    `, [userId]) as any[];
+        let id = (!userId || userId === 'user') ? currentUserId : userId;
 
-        const revisions = dbService.query(`
-      SELECT 'revision' as kind, id, origin_id as actor, NULL as action, object_type, object_id, payload, created_at as ts
-      FROM revisions
-      WHERE origin_id = ?
-    `, [userId]) as any[];
+        const events = await dbService.query(`
+        SELECT 'event' as kind, id, actor, action, object_type, object_id, payload, created_at as ts
+        FROM events
+        WHERE actor = ?
+    `, [id]) as any[];
 
-        const attachments = dbService.query(`
-      SELECT 'attachment' as kind, id, uploaded_by as actor,
-             'upload' as action, 'attachment' as object_type,
-             taskId as object_id, filename as payload, created_at as ts
-      FROM attachments
-      WHERE uploaded_by = ?
-    `, [userId]) as any[];
+        const revisions = await dbService.query(`
+        SELECT 'revision' as kind, id, origin_id as actor, NULL as action, object_type, object_id, payload, created_at as ts
+        FROM revisions
+        WHERE origin_id = ?
+    `, [id]) as any[];
+
+        const attachments = await dbService.query(`
+        SELECT 'attachment' as kind, id, uploaded_by as actor,
+               'upload' as action, 'attachment' as object_type,
+               taskId as object_id, filename as payload, created_at as ts
+        FROM attachments
+        WHERE uploaded_by = ?
+    `, [id]) as any[];
 
         const merged = [...events, ...revisions, ...attachments]
             .sort((a, b) => b.ts - a.ts)
@@ -127,8 +132,24 @@ export function registerMetricsIPC(dbService: DatabaseService) {
         return merged;
     });
 
-    ipcMain.handle('metrics:getProjectHeatmap', async (_e, timeframeDays = 30) => {
+    ipcMain.handle('metrics:getProjectHeatmap', async (_e, timeframeDays = 30, teamId = null) => {
         const since = Date.now() - timeframeDays * 24 * 60 * 60 * 1000;
+
+        if (teamId) {
+            const rows = dbService.query(`
+        SELECT p.id AS project_id, p.name AS project_name,
+          SUM(CASE WHEN t.status != 'done' THEN 1 ELSE 0 END) AS open_count,
+          SUM(CASE WHEN t.status != 'done' AND t.due_date IS NOT NULL AND t.due_date < ? THEN 1 ELSE 0 END) AS overdue_count
+        FROM projects p
+        LEFT JOIN tasks t ON t.project_id = p.id
+        WHERE p.team_id = ?
+        GROUP BY p.id, p.name
+        ORDER BY open_count DESC
+        LIMIT 100
+      `, [since, teamId]);
+
+            return rows;
+        }
 
         const rows = dbService.query(`
       SELECT p.id AS project_id, p.name AS project_name,
