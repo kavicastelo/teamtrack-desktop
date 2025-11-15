@@ -1,0 +1,186 @@
+@use "sass:color";
+
+$bg-dark: #121212;
+$surface: #1c1c1c;
+$text-light: #e0e0e0;
+$text-muted: #9e9e9e;
+$accent: #8bc34a;
+
+.team-view-container {
+  background: $bg-dark;
+  padding: 1.5rem;
+  color: $text-light;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  h2 {
+    margin: 0;
+    font-size: 1.4rem;
+  }
+
+  button {
+    background: $accent;
+    color: $text-light;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+
+    &:hover {
+      background: color.change($accent, $alpha: 0.8);
+    }
+  }
+}
+
+.description {
+  margin-top: 0.5rem;
+  color: $text-muted;
+}
+
+.meta {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: $text-muted;
+  display: flex;
+  gap: 1rem;
+}
+
+.scroll-area {
+  overflow-y: auto;
+  max-height: 400px;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: $bg-dark;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: $surface;
+  }
+}
+
+.section-title {
+  margin-top: 1.8rem;
+  font-weight: 600;
+}
+
+.member-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 0.5rem;
+
+  li {
+    padding: 0.7rem 0.5rem;
+    background: $surface;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+
+    .user {
+      display: flex;
+      justify-content: space-between;
+
+      .role {
+        color: $accent;
+        font-size: 0.85rem;
+      }
+    }
+  }
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+
+  .task-card {
+    background: $surface;
+    padding: 0.8rem;
+    border-radius: 6px;
+
+    h4 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    p {
+      font-size: 0.875rem;
+      color: $text-muted;
+      margin: 4px 0 6px;
+    }
+
+    .badge.status {
+      background: #2196f3;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      color: #fff;
+    }
+  }
+}
+
+.loading {
+  text-align: center;
+  color: $text-muted;
+  font-size: 1rem;
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+li {
+  background: #2b2b2b;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+li:hover {
+  background: #3a3a3a;
+}
+
+h3 {
+  font-size: 1.1rem;
+  color: #e0e0e0;
+}
+
+p {
+  font-size: 0.875rem;
+  color: #b0b0b0;
+}
+
+.btn-secondary {
+  background: #2c2c2c;
+  color: #80b8a7;
+  border: 1px solid #80b8a7;
+  cursor: pointer;
+}
+
+.btn-danger {
+  background: #f44336;
+  color: #fff;
+  border: 1px solid #f44336;
+  cursor: pointer;
+}
+
+.flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}

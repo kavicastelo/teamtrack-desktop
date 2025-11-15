@@ -5,7 +5,7 @@
   <div class="list">
     <div *ngFor="let row of data" class="row">
       <div class="app">{{ row.app }}</div>
-      <div class="meta">{{ row.minutes }} min • {{ row.events }} events</div>
+      <div class="meta">{{ row.minutes }} min • {{ row.events | numberConcat }} events</div>
     </div>
   </div>
 </mat-card>

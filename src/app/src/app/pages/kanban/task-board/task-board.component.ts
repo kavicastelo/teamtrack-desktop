@@ -8,12 +8,15 @@ import {
   moveItemInArray,
   transferArrayItem
 } from '@angular/cdk/drag-drop';
-import {DatePipe, NgClass, NgForOf, NgIf} from '@angular/common';
+import {NgClass, NgForOf, NgIf} from '@angular/common';
 import {Task} from '../../../models/task.model';
 import {MatButton} from '@angular/material/button';
 import {MatDialog} from '@angular/material/dialog';
-import {TaskDetailDialogComponent} from '../../../components/task-detail-dialog/task-detail-dialog.component';
 import {AuthService} from '../../../services/auth.service';
+import {TaskViewDialogComponent} from '../../../components/task-view-dialog/task-view-dialog.component';
+import {MatTooltip} from '@angular/material/tooltip';
+import {MatCheckbox} from '@angular/material/checkbox';
+import {FormsModule} from '@angular/forms';
 
 @Component({
   selector: 'app-task-board',
@@ -24,7 +27,10 @@ import {AuthService} from '../../../services/auth.service';
     NgIf,
     CdkDropListGroup,
     NgClass,
-    MatButton
+    MatButton,
+    MatTooltip,
+    MatCheckbox,
+    FormsModule
   ],
   templateUrl: './task-board.component.html',
   styleUrl: './task-board.component.scss',
@@ -49,6 +55,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   users: any[] = [];
 
   connectedDropLists: string[] = this.columns.map(c => c.id);
+  onlymeCheck = false;
 
   constructor(private ipc: IpcService, private auth: AuthService, private dialog: MatDialog) {}
 
@@ -82,6 +89,9 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     this.error = null;
     try {
       await this.ipc.listTasks(this.projectId).then((rows: Task[]) => {
+        if (this.onlymeCheck) {
+          rows = rows.filter(t => t.assignee === this.auth.user()?.id);
+        }
         this.populateColumns(rows || []);
       });
     } catch (err: any) {
@@ -181,7 +191,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   }
 
   openTaskDetail(task: Task) {
-    const ref = this.dialog.open(TaskDetailDialogComponent, {
+    const ref = this.dialog.open(TaskViewDialogComponent, {
       width: '500px',
       data: { task },
       panelClass: this.darkMode ? 'dark-dialog' : ''
@@ -200,5 +210,19 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
 
   loadAssignee(assignee: string): string {
     return this.users.find(u => u.id === assignee)?.full_name || this.users.find(u => u.id === assignee)?.email || assignee;
+  }
+
+  getPriorityLabel(priority: number | undefined) {
+    if (!priority) return 'Priority: None';
+    return `Priority: ${priority === 1 ? 'High' : priority === 2 ? 'Medium' : 'Low'}`;
+  }
+
+  getPriorityClass(priority: number | undefined) {
+    if (!priority) return '';
+    return `p${priority}`;
+  }
+
+  filterTasks() {
+    this.loadTasks().then();
   }
 }

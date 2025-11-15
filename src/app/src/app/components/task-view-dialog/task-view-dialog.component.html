@@ -1,0 +1,49 @@
+<h2 mat-dialog-title class="title-row">
+  <span>{{ task.title }}</span>
+  <button mat-icon-button (click)="openEdit()">
+    <mat-icon>edit</mat-icon>
+  </button>
+</h2>
+
+<mat-dialog-content class="content">
+
+  <!-- Status, Priority, Assignee -->
+  <div class="meta-row">
+    <span class="chip status">{{ task.status | titlecase }}</span>
+    <span class="chip priority p{{task.priority}}">
+      Priority: {{ priorityLabel(task.priority) }}
+    </span>
+    <span class="chip assignee" *ngIf="assignee">
+      {{ assignee.full_name || assignee.email }}
+    </span>
+  </div>
+
+  <!-- Description with innerHTML binding -->
+  <div class="desc" *ngIf="task.description" [innerHTML]="sanitizedDescription"></div>
+  <p class="empty" *ngIf="!task.description">No description</p>
+
+  <div class="dates">
+    <p><strong>Due:</strong> {{ task.due_date | date:'mediumDate' }}</p>
+    <p><strong>Created:</strong> {{ task.created_at | date:'medium' }}</p>
+    <p><strong>Updated:</strong> {{ task.updated_at | date:'medium' }}</p>
+    <p><strong>ID:</strong> {{ task.id }}</p>
+  </div>
+
+  <h3 class="section-title">📎 Attachments</h3>
+  <div class="attachment-list">
+    <div
+      *ngFor="let a of attachments"
+      class="file-item"
+      (click)="openAttachment(a)"
+    >
+      <mat-icon>insert_drive_file</mat-icon>
+      <span>{{ a.filename }}</span>
+    </div>
+
+    <p *ngIf="attachments.length === 0" class="empty">No attachments</p>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>Close</button>
+</mat-dialog-actions>

@@ -175,6 +175,7 @@ export function registerIPCHandlers(services: {
 
     /** Tasks */
     ipcMain.handle("task:list", (_e, projectId) => dbService.listTasks(projectId));
+    ipcMain.handle("task:listByTeamId", (_e, teamId) => dbService.listTasksByTeamId(teamId));
     ipcMain.handle("task:create", async (_e, payload) => {
         const task = dbService.createTask(payload);
         await dbService.logEvent({

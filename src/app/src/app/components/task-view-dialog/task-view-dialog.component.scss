@@ -1,0 +1,92 @@
+:host {
+  display: block;
+  color: #e0e0e0;
+}
+
+.title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  button {
+    color: #90caf9;
+  }
+}
+
+.content {
+  padding-top: 8px;
+}
+
+.meta-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.chip {
+  padding: 4px 8px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  font-size: 0.75rem;
+
+  &.status {
+    background: #3a3f55;
+    color: #90caf9;
+  }
+  &.priority.p1 {
+    background: #4a2f33;
+    color: #ef5350;
+  }
+  &.priority.p2 {
+    background: #3f3b2f;
+    color: #ffca28;
+  }
+  &.priority.p3 {
+    background: #293f2f;
+    color: #81c784;
+  }
+  &.assignee {
+    background: #2d2d2d;
+  }
+}
+
+.desc {
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+
+.dates {
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+  opacity: 0.85;
+}
+
+.section-title {
+  margin-top: 1.5rem;
+  font-weight: 600;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #1a1a1a;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  cursor: pointer;
+
+  &:hover {
+    background: #2a2a2a;
+  }
+
+  mat-icon {
+    color: #90caf9;
+  }
+}
+
+.empty {
+  margin-top: 8px;
+  opacity: 0.6;
+}

@@ -4,11 +4,12 @@ import { BaseChartDirective } from 'ng2-charts';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import {IpcService} from '../../../services/ipc.service';
+import {NumberConcatPipe} from '../../pipes/NumberConcatPipe';
 
 @Component({
   selector: 'app-usage-chart',
   standalone: true,
-  imports: [CommonModule, MatCardModule, BaseChartDirective],
+  imports: [CommonModule, MatCardModule, BaseChartDirective, NumberConcatPipe],
   templateUrl: './app-usage.component.html',
   styleUrls: ['./app-usage.component.scss']
 })

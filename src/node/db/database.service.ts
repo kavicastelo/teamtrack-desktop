@@ -295,6 +295,32 @@ export class DatabaseService {
     return this.db!.prepare(`SELECT * FROM tasks ORDER BY updated_at DESC`).all();
   }
 
+  listTasksByTeamId(teamId?: string|null) {
+    if (!teamId) {
+      return this.db!.prepare(
+          `SELECT * FROM tasks ORDER BY updated_at DESC`
+      ).all();
+    }
+
+    return this.db!.prepare(
+        `
+          SELECT
+            t.*,
+            u.full_name AS assignee_name,
+            u.email AS assignee_email,
+            tm.team_id,
+            tm.role,
+            te.name AS team_name
+          FROM tasks t
+                 JOIN team_members tm ON t.assignee = tm.user_id
+                 JOIN users u ON u.id = tm.user_id
+                 JOIN teams te ON te.id = tm.team_id
+          WHERE tm.team_id = ?
+          ORDER BY t.updated_at DESC
+        `
+    ).all(teamId);
+  }
+
   updateTask(payload: any) {
     if (!payload.id) throw new Error("Missing task ID");
 

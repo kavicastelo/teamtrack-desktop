@@ -55,6 +55,11 @@
         background: rgba(144, 202, 249, 0.1);
       }
     }
+
+    .left {
+      display: flex;
+      gap: 8px;
+    }
   }
 
   .columns {
@@ -142,6 +147,28 @@
         font-weight: 500;
         color: #fff;
         margin-bottom: 6px;
+      }
+
+      .p-dot {
+        display: inline-block;
+        width: 10px;
+        aspect-ratio: 1/1;
+        border-radius: 50%;
+        background-color: #9e9e9e;
+        margin-right: 6px;
+        cursor: pointer;
+      }
+
+      .p-dot.p1 {
+        background-color: #b71c1c;
+      }
+
+      .p-dot.p2 {
+        background-color: #fdd835;
+      }
+
+      .p-dot.p3 {
+        background-color: #90caf9;
       }
 
       .meta {

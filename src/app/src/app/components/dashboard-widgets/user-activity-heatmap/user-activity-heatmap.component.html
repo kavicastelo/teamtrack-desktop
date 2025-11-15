@@ -36,7 +36,7 @@
     <div class="totals-row">
       <div class="label">Totals</div>
       <div class="total-cell" *ngFor="let h of hours">
-        {{ data.totalsByHour?.[h] || 0 }}
+        {{ (data.totalsByHour?.[h] || 0) | numberConcat }}
       </div>
     </div>
   </div>
