@@ -2,6 +2,7 @@
   <div class="header">
     <div class="left">
       <button (click)="refresh()" mat-stroked-button color="accent">Refresh</button>
+      <mat-checkbox class="check-filter" [(ngModel)]="onlymeCheck" (change)="filterTasks()">Only my tasks</mat-checkbox>
     </div>
     <div class="right">
       <input
@@ -32,7 +33,7 @@
         (cdkDropListDropped)="drop($event)">
 
         <div *ngFor="let t of col.tasks" cdkDrag class="task-card" (click)="openTaskDetail(t)">
-          <div class="title">{{ t.title }}</div>
+          <div class="title"><span class="p-dot" [matTooltip]="getPriorityLabel(t.priority)" [ngClass]="getPriorityClass(t.priority)"></span>{{ t.title }}</div>
           <div class="meta">
             <small *ngIf="t.assignee">👤 {{ loadAssignee(t.assignee) }}</small>
             <small>{{ formatDate(t.updated_at) }}</small>

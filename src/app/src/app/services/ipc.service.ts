@@ -69,6 +69,9 @@ export class IpcService {
   async listTasks(projectId?: string|null) {
     return window.electronAPI.listTasks(projectId);
   }
+  listTasksByTeamId(teamId?: string|null) {
+    return window.electronAPI.listTasksByTeamId(teamId);
+  }
   async deleteTask(id: string) {
     return window.electronAPI.deleteTask(id);
   }

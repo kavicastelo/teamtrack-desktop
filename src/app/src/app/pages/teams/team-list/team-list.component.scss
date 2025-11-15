@@ -103,3 +103,24 @@ li {
     gap: 0.5rem;
   }
 }
+
+.team-meta {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.badge {
+  background: #2f2f2f;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: #bfbfbf;
+}
+
+.badge.mine {
+  background: #4caf50;
+  color: #000;
+  font-weight: 600;
+}

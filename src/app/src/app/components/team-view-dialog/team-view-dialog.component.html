@@ -1,0 +1,56 @@
+<div class="team-view-container" *ngIf="!loading; else loadingTpl">
+
+  <button mat-button mat-dialog-close>← Back</button>
+
+  <div class="header">
+    <h2>{{ team?.name }}</h2>
+    <button class="btn" (click)="editTeam()">Edit</button>
+  </div>
+
+  <p class="description">{{ team?.description }}</p>
+
+  <div class="meta">
+    <span>Created: {{ team?.created_at | date:'mediumDate' }}</span>
+    <span>Updated: {{ team?.updated_at | date:'mediumDate' }}</span>
+  </div>
+
+  <div class="scroll-area">
+    <h3 class="section-title">👥 Team Members</h3>
+    <ul class="member-list">
+      <li *ngFor="let m of members">
+        <div class="user">
+          <strong>{{ m.full_name || m.email }}</strong>
+          <span class="role">{{ m.role }}</span>
+        </div>
+      </li>
+    </ul>
+
+    <div class="p-6">
+      <h3 class="section-title">📃 Tasks for Team: {{ team?.name }}</h3>
+
+      <ul>
+        <li *ngFor="let task of tasks" class="border p-2 my-2 rounded">
+          <div class="flex justify-between">
+            <div>
+              <h3 class="font-medium">{{ task.title }}</h3>
+              <p class="text-sm text-gray-600">{{ task.description }}</p>
+              <p><strong>Assigned to:</strong> {{ task.assignee_name }}</p>
+              <p><strong>Team:</strong> {{ task.team_name }}</p>
+            </div>
+            <div class="flex gap-2">
+              <button (click)="editTask(task)" class="btn-secondary">Edit</button>
+              <button (click)="deleteTask(task)" class="btn-danger">Delete</button>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="empty" *ngIf="tasks.length === 0">No tasks for this team yet.</p>
+
+</div>
+
+<ng-template #loadingTpl>
+  <p class="loading">Loading team...</p>
+</ng-template>

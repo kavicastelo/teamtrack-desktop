@@ -2,11 +2,12 @@ import {Component, Input, OnChanges, OnInit} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {IpcService} from '../../../services/ipc.service';
 import {MatTooltip} from '@angular/material/tooltip';
+import {NumberConcatPipe} from '../../pipes/NumberConcatPipe';
 
 @Component({
   selector: 'app-user-activity-heatmap',
   standalone: true,
-  imports: [CommonModule, MatTooltip],
+  imports: [CommonModule, MatTooltip, NumberConcatPipe],
   templateUrl: './user-activity-heatmap.component.html',
   styleUrls: ['./user-activity-heatmap.component.scss']
 })

@@ -1,14 +1,26 @@
 import {Component, OnInit} from '@angular/core';
 import {IpcService} from '../../../services/ipc.service';
-import {NgForOf} from '@angular/common';
+import {DatePipe, NgForOf, NgIf} from '@angular/common';
 import {ProjectNameDialogComponent} from '../../../components/project-name-dialog/project-name-dialog.component';
 import {MatDialog} from '@angular/material/dialog';
 import {Router} from '@angular/router';
+import {AuthService} from '../../../services/auth.service';
+import {MatOption, MatRipple} from '@angular/material/core';
+import {MatSnackBar} from '@angular/material/snack-bar';
+import {MatFormField, MatLabel} from '@angular/material/form-field';
+import {MatSelect} from '@angular/material/select';
 
 @Component({
   selector: 'app-project-list',
   imports: [
-    NgForOf
+    NgForOf,
+    NgIf,
+    DatePipe,
+    MatRipple,
+    MatFormField,
+    MatLabel,
+    MatSelect,
+    MatOption
   ],
   templateUrl: './project-list.component.html',
   styleUrl: './project-list.component.scss',
@@ -16,51 +28,83 @@ import {Router} from '@angular/router';
 })
 export class ProjectListComponent implements OnInit{
   projects: any[] = [];
+  filteredProjects: any[] = [];
+  users: any[] = [];
+  teams: any[] = [];
+  user: any;
 
-  constructor(private ipc: IpcService, private dialog: MatDialog, private router: Router) {}
+  constructor(
+    private ipc: IpcService,
+    private auth: AuthService,
+    private dialog: MatDialog,
+    private router: Router,
+    private snack: MatSnackBar
+  ) {}
 
   async ngOnInit() {
+    this.user = await this.auth.user();
     this.projects = await this.ipc.listProjects();
+    this.users = await this.auth.listUsers();
+    this.teams = await this.ipc.listTeams();
+    this.filteredProjects = this.projects;
   }
 
-  async createProject() {
-    const dialogRef = this.dialog.open(ProjectNameDialogComponent, {
-      width: '400px',
-      panelClass: 'dialog-dark-theme'
-    });
+  loadAssignee(id: string | null): string {
+    if (!id) return "Unassigned";
+    const u = this.users.find(u => u.id === id);
+    return u?.full_name || u?.email || id;
+  }
 
-    const result = await dialogRef.afterClosed().toPromise();
-    if (result?.name) {
-      await this.ipc.createProject(result);
-      this.projects = await this.ipc.listProjects();
-    }
+  getTeamName(id: string | null): string {
+    if (!id) return "No Team";
+    return this.teams.find(t => t.id === id)?.name || "Unknown Team";
+  }
+
+  async copyId(id: string) {
+    await navigator.clipboard.writeText(id);
+    this.snack.open('ID copied to clipboard', 'OK', { duration: 2000 });
   }
 
   selectProject(p: any) {
     this.router.navigate([`/project/${p.id}`]).then();
   }
 
-  async editProject(p: any) {
-    const dialogRef = this.dialog.open(ProjectNameDialogComponent, {
-      width: '400px',
-      panelClass: 'dialog-dark-theme',
-      data: {project: p}
+  async createProject() {
+    const ref = this.dialog.open(ProjectNameDialogComponent, {
+      width: "400px",
+      panelClass: "dialog-dark-theme"
     });
 
-    const result = await dialogRef.afterClosed().toPromise();
-    if (result?.name) {
-      await this.ipc.updateProject(result);
-      this.projects = await this.ipc.listProjects();
-    }
+    const result = await ref.afterClosed().toPromise();
+    if (!result?.name) return;
+    result.owner_id = this.user.id;
+
+    await this.ipc.createProject(result);
+    this.projects = await this.ipc.listProjects();
   }
 
-  deleteProject(p: any) {
-    if (p) {
-      if (window.confirm('Are you sure you want to delete this project?')) {
-        this.ipc.deleteProject(p.id).then(async () => {
-          this.projects = await this.ipc.listProjects();
-        });
-      }
-    }
+  async editProject(p: any) {
+    const ref = this.dialog.open(ProjectNameDialogComponent, {
+      width: "400px",
+      panelClass: "dialog-dark-theme",
+      data: { project: p }
+    });
+
+    const result = await ref.afterClosed().toPromise();
+    if (!result?.name) return;
+
+    await this.ipc.updateProject(result);
+    this.projects = await this.ipc.listProjects();
+  }
+
+  async deleteProject(p: any) {
+    if (!confirm("Delete this project?")) return;
+    await this.ipc.deleteProject(p.id);
+    this.projects = await this.ipc.listProjects();
+  }
+
+  filterProjects(teamId: any) {
+    if (!teamId) this.filteredProjects = this.projects;
+    else this.filteredProjects = this.projects.filter(p => p.team_id === teamId);
   }
 }

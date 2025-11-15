@@ -62,6 +62,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     updateTask: (payload: any) => ipcRenderer.invoke("task:update", payload),
     deleteTask: (id: string) => ipcRenderer.invoke("task:delete", id),
     listTasks: (projectId?: string) => ipcRenderer.invoke("task:list", projectId),
+    listTasksByTeamId: (teamId?: string|null) => ipcRenderer.invoke("task:listByTeamId", teamId),
     uploadAttachment: (payload: any) => ipcRenderer.invoke("upload-attachment", payload),
     downloadAttachment: (payload: any) => ipcRenderer.invoke("download-attachment", payload),
     openAttachment: (payload: any) => ipcRenderer.invoke("open-attachment", payload),

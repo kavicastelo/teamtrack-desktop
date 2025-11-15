@@ -1,18 +1,57 @@
-<div class="p-6">
-  <button (click)="createProject()" class="btn">New Project</button>
-  <ul>
-    <li *ngFor="let p of projects" class="border p-2 my-2 rounded">
-      <div class="flex justify-between">
-        <div>
-          <h3 class="font-medium">{{ p.name }}</h3>
-          <p class="text-sm text-gray-600">{{ p.description }}</p>
-        </div>
-        <div class="flex gap-2">
-          <button (click)="selectProject(p)" class="btn-primary">View</button>
-          <button (click)="editProject(p)" class="btn-secondary">Edit</button>
-          <button (click)="deleteProject(p)" class="btn-danger">Delete</button>
+<div class="project-list-container">
+
+  <div class="toolbar">
+    <h2>Projects</h2>
+    <div style="display: flex; align-items: center; gap: 10px">
+      <button class="btn" (click)="createProject()">New Project</button>
+      <mat-form-field appearance="outline">
+        <mat-label>Select team</mat-label>
+        <mat-select (selectionChange)="filterProjects($event.value)">
+          <mat-option [value]="null">All Teams</mat-option>
+          <mat-option *ngFor="let t of teams" [value]="t.id">
+            {{ t.name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <ul class="project-list">
+    <li *ngFor="let p of filteredProjects" class="project-item" matRipple>
+
+      <div class="left">
+        <h3 class="project-title">{{ p.name }}</h3>
+        <p class="project-desc" *ngIf="p.description">{{ p.description }}</p>
+
+        <div class="meta">
+          <span class="chip id" (click)="copyId(p.id)">
+            ID: {{ p.id.slice(0, 6) }}…
+          </span>
+
+          <span class="chip owner" *ngIf="p.owner_id">
+            Owner: {{ loadAssignee(p.owner_id) }}
+          </span>
+
+          <span class="chip date">
+            Created: {{ p.created_at | date: 'mediumDate' }}
+          </span>
+
+          <span class="chip team" *ngIf="p.team_id">
+            Team: {{ getTeamName(p.team_id) }}
+          </span>
         </div>
       </div>
+
+      <div class="actions">
+        <button class="btn-primary" (click)="selectProject(p)">View</button>
+        <button class="btn-secondary" (click)="editProject(p)">Edit</button>
+        <button class="btn-danger" (click)="deleteProject(p)">Delete</button>
+      </div>
+
+    </li>
+    <li class="not-found" *ngIf="!filteredProjects || filteredProjects.length === 0">
+      No projects found
     </li>
   </ul>
+
 </div>
