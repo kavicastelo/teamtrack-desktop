@@ -1,7 +1,7 @@
 <mat-sidenav-container class="app-container" autosize>
 
   <!-- Sidebar Navigation -->
-  <mat-sidenav mode="side" opened class="app-sidenav" *ngIf="userProfile">
+  <mat-sidenav mode="side" opened class="app-sidenav" *ngIf="sidenavOpened">
     <div class="logo">
       <mat-icon>groups</mat-icon>
       <span class="app-title">TeamTrack</span>
@@ -115,3 +115,5 @@
   <mat-spinner diameter="70"></mat-spinner>
   <div class="loading-text">Loading TeamTrack…</div>
 </div>
+
+<app-loading [visible]="loading"></app-loading>

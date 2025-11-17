@@ -180,6 +180,6 @@ export class TaskDetailDialogComponent implements OnInit {
   }
 
   cancel() {
-    this.dialogRef.close();
+    this.dialogRef.close(this.task);
   }
 }

@@ -1,1 +1,11 @@
-<p>app-loading works!</p>
+<div class="loading-overlay" *ngIf="visible">
+  <div class="loading-card">
+    <mat-progress-spinner
+      diameter="48"
+      mode="indeterminate"
+      color="primary">
+    </mat-progress-spinner>
+
+    <p class="loading-text">{{ message }}</p>
+  </div>
+</div>

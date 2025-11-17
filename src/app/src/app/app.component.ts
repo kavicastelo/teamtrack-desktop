@@ -15,6 +15,7 @@ import {AuthService} from './services/auth.service';
 import {ProfileComponent} from './pages/profile/profile/profile.component';
 import {MatDialog} from '@angular/material/dialog';
 import {MatProgressSpinner} from '@angular/material/progress-spinner';
+import {AppLoadingComponent} from './components/app-loading/app-loading.component';
 
 export interface SyncStatus {
   type: 'pull' | 'remoteUpdate';
@@ -24,7 +25,7 @@ export interface SyncStatus {
   selector: 'app-root',
   imports: [RouterOutlet, NgClass, NgIf, AsyncPipe, MatIcon, MatIconButton, MatMenu, MatMenuItem, RouterLink,
     MatMenuTrigger, MatSidenavContent, MatToolbar, MatSidenavContainer, MatNavList, MatListItem, RouterLinkActive,
-    MatSidenav, MatTooltip, MessageContainerComponent, MatProgressSpinner],
+    MatSidenav, MatTooltip, MessageContainerComponent, MatProgressSpinner, AppLoadingComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
   standalone: true
@@ -38,7 +39,10 @@ export class AppComponent implements OnInit, OnDestroy {
   userProfile: any;
   isAdmin = false;
 
+  private hasNavigated = false;
   isAppLoaded = new Subject<boolean>();
+  loading = false;
+  sidenavOpened = false;
 
   constructor(
     private ipc: IpcService,
@@ -48,23 +52,28 @@ export class AppComponent implements OnInit, OnDestroy {
   ) {
     this.router.routeReuseStrategy.shouldReuseRoute = () => false;
     effect(() => {
+      if (this.hasNavigated) return;
       const session = this.auth.session();
       const user = this.auth.user();
 
-      setTimeout(() => {
-        if (!session && !window.location.href.includes('auth/callback')) {
-          this.router.navigate(['/auth/login']).then();
-          return;
-        } else {
-          this.router.navigate(['/tasks']).then();
-          return;
-        }
-      }, 800);
+      if (!session && !user) return;
 
-      if (user) {
-        this.userProfile = user;
-        this.adminCheck().then();
+      this.loading = true;
+
+      if (!session && !window.location.href.includes('auth/callback')) {
+        this.hasNavigated = true;
+        this.router.navigate(['/auth/login']).then(() => this.loading = false);
+        return;
       }
+
+      this.userProfile = user;
+      this.adminCheck().then();
+
+      this.hasNavigated = true;
+      this.router.navigate(['/tasks']).then(() => {
+        this.sidenavOpened = true;
+        this.loading = false
+      });
     });
   }
 
