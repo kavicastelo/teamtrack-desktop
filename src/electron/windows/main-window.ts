@@ -1,6 +1,7 @@
 import {app, BrowserWindow, dialog} from "electron";
 import path from "path";
 import dotenv from "dotenv";
+import {uiEventBus} from "../ipc/UiEventBus";
 
 const envPath = app.isPackaged
     ? path.join(process.resourcesPath, "app.asar.unpacked", ".env")
@@ -10,7 +11,10 @@ dotenv.config({ path: envPath });
 let mainWindow: BrowserWindow | null = null;
 
 export function createMainWindow(initialDeepLink?: string | null) {
-    if (mainWindow) return mainWindow;
+    if (mainWindow) {
+        uiEventBus.initialize(mainWindow);
+        return mainWindow;
+    }
 
     mainWindow = new BrowserWindow({
         width: 1280,
@@ -53,6 +57,7 @@ export function createMainWindow(initialDeepLink?: string | null) {
 
     mainWindow.on("closed", () => (mainWindow = null));
 
+    uiEventBus.initialize(mainWindow);
     return mainWindow;
 }
 

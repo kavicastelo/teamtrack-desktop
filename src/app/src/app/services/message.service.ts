@@ -16,7 +16,7 @@ export class MessageService {
   }
 
   private listenToElectronMessages() {
-    this.ipc.statusEvents$.subscribe((event) => {
+    this.ipc.messageEvents$.subscribe((event) => {
       const { type, record } = event;
       if (!record?.message) return;
       this.push(type, record.message);

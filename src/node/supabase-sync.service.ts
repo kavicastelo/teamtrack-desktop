@@ -9,6 +9,7 @@ import {v4 as uuidv4} from "uuid";
 import {URL} from "url";
 import dns from "dns/promises";
 import Store from "electron-store";
+import {uiEventBus} from "../electron/ipc/UiEventBus";
 
 const store = new Store();
 
@@ -59,14 +60,15 @@ export class SupabaseSyncService extends EventEmitter {
     }
 
     async start() {
-        this.sendToUI("sync:info", {message: "Starting sync..."});
+        uiEventBus.send("sync:info", {message: "Starting sync..."});
         this.monitorNetwork();
         await this.startRealtimeSub();
         this.startPushLoop();
+        uiEventBus.send("app:loaded", true);
     }
 
     async stop() {
-        this.sendToUI("sync:info", {message: "Stopping sync..."});
+        uiEventBus.send("sync:info", {message: "Stopping sync..."});
         if (this.pushTimer) clearInterval(this.pushTimer);
         if (this.networkCheckTimer) clearInterval(this.networkCheckTimer);
 
@@ -77,7 +79,7 @@ export class SupabaseSyncService extends EventEmitter {
                     await this.client.removeChannel(ch);
                 }
             } catch (err) {
-                this.sendToUI("sync:warning", {message: "Failed to remove channels on stop"});
+                uiEventBus.send("sync:warning", {message: "Failed to remove channels on stop"});
             }
         }
         this.channels = [];
@@ -93,7 +95,7 @@ export class SupabaseSyncService extends EventEmitter {
         try {
             if (supabaseUrl) host = new URL(supabaseUrl).hostname || host;
         } catch {
-            this.sendToUI("sync:warning", {message: "Invalid Supabase URL; using fallback host: " + host});
+            uiEventBus.send("sync:warning", {message: "Invalid Supabase URL; using fallback host: " + host});
         }
 
         let consecutiveFailures = 0;
@@ -136,31 +138,31 @@ export class SupabaseSyncService extends EventEmitter {
 
                 if (!this.online && consecutiveSuccesses >= threshold) {
                     this.online = true;
-                    this.sendToUI("sync:status", {online: true});
+                    uiEventBus.send("sync:status", {online: true});
 
                     if (!reconnecting) {
-                        this.sendToUI("sync:info", {message: "Resuming sync..."});
+                        uiEventBus.send("sync:info", {message: "Resuming sync..."});
                         reconnecting = true;
                         try {
                             await this.recreateRealtimeSubscriptions();
                             await this.pushLocalRevisions();
                             await this.pullAllRemoteUpdates();
                         } catch (e) {
-                            this.sendToUI("sync:error", {message: "Failed to reconnect", error: e});
+                            uiEventBus.send("sync:error", {message: "Failed to reconnect", error: e});
                         } finally {
                             reconnecting = false;
                         }
                     }
                 } else {
-                    this.sendToUI("sync:status", {online: true});
+                    uiEventBus.send("sync:status", {online: true});
                 }
             } else {
                 consecutiveFailures++;
                 consecutiveSuccesses = 0;
                 if (this.online && consecutiveFailures >= threshold) {
                     this.online = false;
-                    this.sendToUI("sync:warning", {message: "Offline mode activated"});
-                    this.sendToUI("sync:status", {online: false});
+                    uiEventBus.send("sync:warning", {message: "Offline mode activated"});
+                    uiEventBus.send("sync:status", {online: false});
                 }
             }
         };
@@ -181,7 +183,7 @@ export class SupabaseSyncService extends EventEmitter {
             this.channels = [];
             await this.startRealtimeSub();
         } catch (err) {
-            this.sendToUI("sync:error", {message: "Failed to recreate subscriptions", error: err});
+            uiEventBus.send("sync:error", {message: "Failed to recreate subscriptions", error: err});
         }
     }
 
@@ -192,7 +194,7 @@ export class SupabaseSyncService extends EventEmitter {
             if (this.online) {
                 this.pushLocalRevisions().catch((err) => console.error("[Sync] pushLocalRevisions error:", err));
             } else {
-                this.sendToUI("sync:info", {message: "Skipping push (offline)"});
+                uiEventBus.send("sync:info", {message: "Skipping push (offline)"});
             }
         }, 7000);
     }
@@ -216,15 +218,15 @@ export class SupabaseSyncService extends EventEmitter {
 
                 await ch.subscribe((status) => {
                     if (status === "SUBSCRIBED") {
-                        this.sendToUI("sync:success", {message: "Realtime subscription active for " + channel});
-                        this.sendToUI("sync:status", {realtime: "connected"});
+                        uiEventBus.send("sync:success", {message: "Realtime subscription active for " + channel});
+                        uiEventBus.send("sync:status", {realtime: "connected"});
                     }
                 });
 
                 this.channels.push(ch);
             } catch (err) {
-                this.sendToUI("sync:error", {message: "Failed to start realtime subscription", error: err});
-                this.sendToUI("sync:status", {realtime: "error", message: String(err)});
+                uiEventBus.send("sync:error", {message: "Failed to start realtime subscription", error: err});
+                uiEventBus.send("sync:status", {realtime: "error", message: String(err)});
             }
         }
     }
@@ -236,17 +238,17 @@ export class SupabaseSyncService extends EventEmitter {
         try {
             if (eventType === "DELETE") {
                 this.deleteRow(table, oldRow);
-                this.sendToUI("sync:remoteDelete", { table, oldRow });
+                uiEventBus.send("sync:remoteDelete", { table, oldRow });
                 return;
             }
 
             if (!newRow) return;
 
             this.upsertRow(table, newRow);
-            this.sendToUI("sync:remoteUpdate", { table, record: newRow });
+            uiEventBus.send("sync:remoteUpdate", { table, record: newRow });
 
         } catch (err) {
-            this.sendToUI("sync:error", {
+            uiEventBus.send("sync:error", {
                 table,
                 message: "Failed to handle remote change",
                 error: String(err)
@@ -313,7 +315,7 @@ export class SupabaseSyncService extends EventEmitter {
 
         const orderField = this.tableMeta[table].orderField;
         if (!orderField) {
-            this.sendToUI("sync:error", { message: `Unknown table: ${table}` });
+            uiEventBus.send("sync:error", { message: `Unknown table: ${table}` });
             return;
         }
 
@@ -342,7 +344,7 @@ export class SupabaseSyncService extends EventEmitter {
                 .range(offset, offset + CHUNK - 1);
 
             if (error) {
-                this.sendToUI("sync:error", { message: `Failed to pull ${table}`, error });
+                uiEventBus.send("sync:error", { message: `Failed to pull ${table}`, error });
                 return;
             }
 
@@ -354,13 +356,13 @@ export class SupabaseSyncService extends EventEmitter {
             offset += CHUNK;
 
             if (total % 1000 === 0) {
-                this.sendToUI("sync:progress", { table, total });
+                uiEventBus.send("sync:progress", { table, total });
             }
 
             if (data.length < CHUNK) break;
         }
 
-        this.sendToUI("sync:success", {
+        uiEventBus.send("sync:success", {
             table,
             total,
             message: `Pulled ${total} ${table} rows`,
@@ -416,7 +418,7 @@ export class SupabaseSyncService extends EventEmitter {
             const backgroundRows = rows.filter(r => silentTypes.has(r.object_type));
 
             if (userRows.length) {
-                this.sendToUI("sync:info", { message: `Pushing ${userRows.length} user revisions...` });
+                uiEventBus.send("sync:info", { message: `Pushing ${userRows.length} user revisions...` });
             }
 
             // Group revisions by object_type
@@ -448,7 +450,7 @@ export class SupabaseSyncService extends EventEmitter {
 
                 if (error) {
                     // If the bulk upload fails, fallback to retry each record
-                    this.sendToUI("sync:warning", { message: `Bulk sync failed for ${objectType}: ${error.message}` });
+                    uiEventBus.send("sync:warning", { message: `Bulk sync failed for ${objectType}: ${error.message}` });
                     for (const rec of records) {
                         this.queueRetry({ object_type: objectType, id: rec._revision_id });
                     }
@@ -462,20 +464,20 @@ export class SupabaseSyncService extends EventEmitter {
 
                 totalSynced += records.length;
                 if (silentTypes.has(objectType)) backgroundCount += records.length;
-                else this.sendToUI("sync:success", { message: `Synced ${records.length} ${objectType} revisions` });
+                else uiEventBus.send("sync:success", { message: `Synced ${records.length} ${objectType} revisions` });
             }
 
             if (backgroundCount > 0) {
-                this.sendToUI("sync:summary", {
+                uiEventBus.send("sync:summary", {
                     message: `Synced ${backgroundCount} background revisions (${Array.from(silentTypes).join(", ")})`
                 });
             }
 
             if (totalSynced > 50)
-                this.sendToUI("sync:info", { message: `Push complete — ${totalSynced} total revisions synced.` });
+                uiEventBus.send("sync:info", { message: `Push complete — ${totalSynced} total revisions synced.` });
 
         } catch (err) {
-            this.sendToUI("sync:error", { message: "Failed to push local revisions", error: err });
+            uiEventBus.send("sync:error", { message: "Failed to push local revisions", error: err });
         }
     }
 
@@ -485,7 +487,7 @@ export class SupabaseSyncService extends EventEmitter {
         const MAX_RETRIES = 3;
 
         if (retryCount >= MAX_RETRIES) {
-            this.sendToUI("sync:warning", {
+            uiEventBus.send("sync:warning", {
                 message: `Giving up on revision ${rev.id} after ${MAX_RETRIES} retries.`,
             });
             // Optionally mark it as failed permanently
@@ -494,7 +496,7 @@ export class SupabaseSyncService extends EventEmitter {
         }
 
         const delay = Math.min(60000, Math.pow(2, retryCount) * 1000);
-        this.sendToUI("sync:info", {
+        uiEventBus.send("sync:info", {
             message: `Retrying ${rev.id} (attempt ${retryCount + 1}/${MAX_RETRIES}) in ${delay / 1000}s`,
         });
 
@@ -507,12 +509,12 @@ export class SupabaseSyncService extends EventEmitter {
 
                 if (!error) {
                     this.dbService.query("UPDATE revisions SET synced = 1 WHERE id = ?", [rev.id]);
-                    this.sendToUI("sync:success", { message: `Synced revision: ${rev.id}` });
+                    uiEventBus.send("sync:success", { message: `Synced revision: ${rev.id}` });
                     return;
                 }
                 throw error;
             } catch (err) {
-                this.sendToUI("sync:error", {
+                uiEventBus.send("sync:error", {
                     message: `Retry ${retryCount + 1} failed for ${rev.id}: ${err.message}`,
                 });
                 this.queueRetry({ ...rev, retryCount: retryCount + 1 });
@@ -531,7 +533,7 @@ export class SupabaseSyncService extends EventEmitter {
         const { error } = await query;
 
         if (error) {
-            this.sendToUI("sync:error", { message: "Failed to delete record", error });
+            uiEventBus.send("sync:error", { message: "Failed to delete record", error });
         }
     }
 
@@ -547,7 +549,7 @@ export class SupabaseSyncService extends EventEmitter {
         const supabasePath = `tasks/${taskId}/${Date.now()}-${fileName}`;
 
         const {data, error} = await this.client.storage.from("attachments").upload(supabasePath, fileBuffer);
-        if (error) this.sendToUI("sync:error", {message: "Failed to upload attachment", error});
+        if (error) uiEventBus.send("sync:error", {message: "Failed to upload attachment", error});
 
         const created_at = Date.now();
         const newAttachment = {
@@ -574,7 +576,7 @@ export class SupabaseSyncService extends EventEmitter {
         const db = this.dbService.getOrm();
         db.insert(attachments).values(newAttachment).run();
         db.insert(revisions).values(newRevision).run();
-        this.sendToUI("sync:success", {message: "Created attachment: " + newAttachment.id});
+        uiEventBus.send("sync:success", {message: "Created attachment: " + newAttachment.id});
         return newAttachment;
     }
 
@@ -604,7 +606,7 @@ export class SupabaseSyncService extends EventEmitter {
         if (canceled || !filePath) return null;
 
         fs.writeFileSync(filePath, Buffer.from(await data.arrayBuffer()));
-        this.sendToUI("sync:success", {message: "Downloaded attachment: " + filename});
+        uiEventBus.send("sync:success", {message: "Downloaded attachment: " + filename});
         shell.showItemInFolder(filePath);
         return filePath;
     }
@@ -617,18 +619,18 @@ export class SupabaseSyncService extends EventEmitter {
         return db.select().from(attachments).all();
     }
 
-    private sendToUI(event: string, payload: any) {
-        try {
-            if (!this.mainWindow || this.mainWindow.isDestroyed()) {
-                console.warn(`Cannot send ${event}: mainWindow is not available.`);
-                return;
-            }
-
-            // Ensure payload is serializable (IPC requires it)
-            this.mainWindow.webContents.send(event, payload);
-        } catch (err) {
-            // Log to console or a file — DO NOT re-send to UI
-            console.error(`Failed to send event '${event}' to UI:`, err);
-        }
-    }
+    // private sendToUI(event: string, payload: any) {
+    //     try {
+    //         if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+    //             console.warn(`Cannot send ${event}: mainWindow is not available.`);
+    //             return;
+    //         }
+    //
+    //         // Ensure payload is serializable (IPC requires it)
+    //         this.mainWindow.webContents.send(event, payload);
+    //     } catch (err) {
+    //         // Log to console or a file — DO NOT re-send to UI
+    //         console.error(`Failed to send event '${event}' to UI:`, err);
+    //     }
+    // }
 }
