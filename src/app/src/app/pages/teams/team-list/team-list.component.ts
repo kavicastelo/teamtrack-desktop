@@ -10,6 +10,7 @@ import {TeamMemberService} from '../../../services/team-member.service';
 import {AuthService} from '../../../services/auth.service';
 import {Task} from '../../../models/task.model';
 import {TeamViewDialogComponent} from '../../../components/team-view-dialog/team-view-dialog.component';
+import {AppLoadingComponent} from '../../../components/app-loading/app-loading.component';
 
 @Component({
   selector: 'app-team-list',
@@ -17,7 +18,8 @@ import {TeamViewDialogComponent} from '../../../components/team-view-dialog/team
     NgForOf,
     MatCheckbox,
     FormsModule,
-    NgIf
+    NgIf,
+    AppLoadingComponent
   ],
   templateUrl: './team-list.component.html',
   styleUrl: './team-list.component.scss',
@@ -33,6 +35,8 @@ export class TeamListComponent implements OnInit {
   onlymeCheck = false;
   user: any;
 
+  loading = false;
+
   constructor(
     private ipc: IpcService,
     private tm: TeamMemberService,
@@ -42,8 +46,10 @@ export class TeamListComponent implements OnInit {
   ) {}
 
   async ngOnInit() {
+    this.loading = true;
     this.user = await this.auth.user();
     await this.listAllTeams(this.projectId);
+    this.loading = false;
   }
 
   async listAllTeams(projectId?: string | null) {

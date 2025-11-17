@@ -76,9 +76,11 @@ export class TaskViewDialogComponent implements OnInit{
     });
 
     ref.afterClosed().subscribe(updated => {
-      if (updated) {
+      if (updated.id) {
         this.task = updated;
         this.ngOnInit().then();
+      } else {
+        this.dialogRef.close();
       }
     });
   }
@@ -102,5 +104,9 @@ export class TaskViewDialogComponent implements OnInit{
     return text.replace(urlRegex, url => {
       return `<a href="${url}" target="_blank" class="link">${url}</a>`;
     });
+  }
+
+  cancel() {
+    this.dialogRef.close(this.task);
   }
 }

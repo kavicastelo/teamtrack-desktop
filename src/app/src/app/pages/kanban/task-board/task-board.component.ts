@@ -17,6 +17,7 @@ import {TaskViewDialogComponent} from '../../../components/task-view-dialog/task
 import {MatTooltip} from '@angular/material/tooltip';
 import {MatCheckbox} from '@angular/material/checkbox';
 import {FormsModule} from '@angular/forms';
+import {AppLoadingComponent} from '../../../components/app-loading/app-loading.component';
 
 @Component({
   selector: 'app-task-board',
@@ -30,7 +31,8 @@ import {FormsModule} from '@angular/forms';
     MatButton,
     MatTooltip,
     MatCheckbox,
-    FormsModule
+    FormsModule,
+    AppLoadingComponent
   ],
   templateUrl: './task-board.component.html',
   styleUrl: './task-board.component.scss',
@@ -200,6 +202,8 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     ref.afterClosed().subscribe((result) => {
       if (result) {
         this.applyRemoteTask(result); // refresh the changed task
+      } else {
+        this.refresh();
       }
     });
   }

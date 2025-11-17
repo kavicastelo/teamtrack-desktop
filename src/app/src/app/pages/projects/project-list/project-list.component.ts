@@ -9,6 +9,7 @@ import {MatOption, MatRipple} from '@angular/material/core';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {MatFormField, MatLabel} from '@angular/material/form-field';
 import {MatSelect} from '@angular/material/select';
+import {AppLoadingComponent} from '../../../components/app-loading/app-loading.component';
 
 @Component({
   selector: 'app-project-list',
@@ -20,7 +21,8 @@ import {MatSelect} from '@angular/material/select';
     MatFormField,
     MatLabel,
     MatSelect,
-    MatOption
+    MatOption,
+    AppLoadingComponent
   ],
   templateUrl: './project-list.component.html',
   styleUrl: './project-list.component.scss',
@@ -32,6 +34,7 @@ export class ProjectListComponent implements OnInit{
   users: any[] = [];
   teams: any[] = [];
   user: any;
+  loading = false;
 
   constructor(
     private ipc: IpcService,
@@ -42,10 +45,16 @@ export class ProjectListComponent implements OnInit{
   ) {}
 
   async ngOnInit() {
+    this.loading = true;
     this.user = await this.auth.user();
-    this.projects = await this.ipc.listProjects();
+    await this.listAllProjects();
     this.users = await this.auth.listUsers();
     this.teams = await this.ipc.listTeams();
+    this.loading = false;
+  }
+
+  async listAllProjects() {
+    this.projects = await this.ipc.listProjects();
     this.filteredProjects = this.projects;
   }
 
@@ -80,7 +89,7 @@ export class ProjectListComponent implements OnInit{
     result.owner_id = this.user.id;
 
     await this.ipc.createProject(result);
-    this.projects = await this.ipc.listProjects();
+    await this.listAllProjects();
   }
 
   async editProject(p: any) {
@@ -94,13 +103,13 @@ export class ProjectListComponent implements OnInit{
     if (!result?.name) return;
 
     await this.ipc.updateProject(result);
-    this.projects = await this.ipc.listProjects();
+    await this.listAllProjects();
   }
 
   async deleteProject(p: any) {
     if (!confirm("Delete this project?")) return;
     await this.ipc.deleteProject(p.id);
-    this.projects = await this.ipc.listProjects();
+    await this.listAllProjects();
   }
 
   filterProjects(teamId: any) {

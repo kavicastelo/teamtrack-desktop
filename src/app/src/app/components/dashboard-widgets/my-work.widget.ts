@@ -98,20 +98,21 @@ import {AuthService} from '../../services/auth.service';
       display: flex;
       justify-content: space-between;
       margin-bottom: 14px;
-    }
 
-    .stat label {
-      font-size: .75rem;
-      opacity: .7;
-    }
+      .stat label {
+        font-size: .75rem;
+        opacity: .7;
+        margin-right: .4rem;
+      }
 
-    .value {
-      font-size: 1rem;
-      font-weight: 500;
-    }
+      .value {
+        font-size: 1rem;
+        font-weight: 500;
+      }
 
-    .overdue {
-      color: #ff7979;
+      .value.overdue {
+        color: #ff7979;
+      }
     }
 
     /* SECTION TITLE */
@@ -174,7 +175,7 @@ import {AuthService} from '../../services/auth.service';
       color: #402c00;
     }
 
-    .overdue {
+    .chip.overdue {
       background: #ff4b4b;
       color: white !important;
     }
