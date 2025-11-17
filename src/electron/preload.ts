@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electronAPI", {
     onDeepLink: (callback: (url: string) => void) => ipcRenderer.on('deep-link', (_, url) => callback(url)),
+    rendererReady: () => ipcRenderer.send("renderer-ready"),
     auth: {
         setUserId: (userId: string) => ipcRenderer.invoke('auth:set-user-id', userId),
         signInEmail: (email: string) => ipcRenderer.invoke('auth:signInEmail', email),
@@ -115,4 +116,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
         ipcRenderer.on("sync:warning", listener);
         return () => ipcRenderer.removeListener("sync:warning", listener);
     },
+    onAppLoaded: (cb) => {
+        const listener = (_event, payload) => cb(payload);
+        ipcRenderer.on("app:loaded", listener);
+        return () => ipcRenderer.removeListener("app:loaded", listener);
+    }
 });

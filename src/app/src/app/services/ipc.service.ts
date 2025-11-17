@@ -20,7 +20,9 @@ declare global {
 @Injectable({ providedIn: 'root' })
 export class IpcService {
   statusEvents$ = new Subject<any>();
+  messageEvents$ = new Subject<any>();
   syncEvents$ = new Subject<any>();
+  appLoaded$ = new Subject<any>();
 
   constructor() {
     if (window.electronAPI?.onPullUpdate) {
@@ -41,23 +43,31 @@ export class IpcService {
 
     if (window.electronAPI?.onSuccessMessage) {
       window.electronAPI.onSuccessMessage((data: any) =>
-        this.statusEvents$.next({type: "success", record: data}));
+        this.messageEvents$.next({type: "success", record: data}));
     }
 
     if (window.electronAPI?.onErrorMessage) {
       window.electronAPI.onErrorMessage((data: any) =>
-        this.statusEvents$.next({type: "error", record: data}));
+        this.messageEvents$.next({type: "error", record: data}));
     }
 
     if (window.electronAPI?.onInfoMessage) {
       window.electronAPI.onInfoMessage((data: any) =>
-        this.statusEvents$.next({type: "info", record: data}));
+        this.messageEvents$.next({type: "info", record: data}));
     }
 
     if (window.electronAPI?.onWarningMessage) {
       window.electronAPI.onWarningMessage((data: any) =>
-        this.statusEvents$.next({type: "warning", record: data}));
+        this.messageEvents$.next({type: "warning", record: data}));
     }
+
+    if (window.electronAPI?.onAppLoaded) {
+      window.electronAPI?.onAppLoaded((data: any) => this.appLoaded$.next(data));
+    }
+  }
+
+  async rendererReady() {
+    return window.electronAPI.rendererReady();
   }
 
   async createTask(payload: any) {

@@ -14,6 +14,7 @@ import {MessageContainerComponent} from './components/message-container/message-
 import {AuthService} from './services/auth.service';
 import {ProfileComponent} from './pages/profile/profile/profile.component';
 import {MatDialog} from '@angular/material/dialog';
+import {MatProgressSpinner} from '@angular/material/progress-spinner';
 
 export interface SyncStatus {
   type: 'pull' | 'remoteUpdate';
@@ -21,7 +22,9 @@ export interface SyncStatus {
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, NgClass, NgIf, AsyncPipe, MatIcon, MatIconButton, MatMenu, MatMenuItem, RouterLink, MatMenuTrigger, MatSidenavContent, MatToolbar, MatSidenavContainer, MatNavList, MatListItem, RouterLinkActive, MatSidenav, MatTooltip, MessageContainerComponent],
+  imports: [RouterOutlet, NgClass, NgIf, AsyncPipe, MatIcon, MatIconButton, MatMenu, MatMenuItem, RouterLink,
+    MatMenuTrigger, MatSidenavContent, MatToolbar, MatSidenavContainer, MatNavList, MatListItem, RouterLinkActive,
+    MatSidenav, MatTooltip, MessageContainerComponent, MatProgressSpinner],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
   standalone: true
@@ -34,6 +37,8 @@ export class AppComponent implements OnInit, OnDestroy {
   currentSectionTitle = 'Dashboard';
   userProfile: any;
   isAdmin = false;
+
+  isAppLoaded = new Subject<boolean>();
 
   constructor(
     private ipc: IpcService,
@@ -67,6 +72,7 @@ export class AppComponent implements OnInit, OnDestroy {
   // LIFECYCLE
   // ────────────────────────────────
   async ngOnInit() {
+    await this.ipc.rendererReady();
     this.initSyncStatus();
     this.trackCurrentRoute();
     this.listenForPresence();
@@ -77,6 +83,12 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Initialize auth state
     await this.auth.init();
+
+    this.ipc.appLoaded$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((loaded: any) => {
+        this.isAppLoaded.next(loaded);
+      });
   }
 
   ngOnDestroy() {

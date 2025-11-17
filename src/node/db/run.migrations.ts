@@ -36,7 +36,6 @@ export function runMigrations(db: any) {
     const currentVersion = getDbVersion();
 
     for (const file of files) {
-        console.log(file)
         const version = Number(file.split("_")[0]);
         if (version <= currentVersion) continue;
 

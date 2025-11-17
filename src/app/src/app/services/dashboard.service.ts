@@ -2,8 +2,8 @@ import { Injectable, signal } from '@angular/core';
 
 declare global {
   interface Window {
-    electronAPI: any;
-    metrics: any;
+    // electronAPI: any;
+    // metrics: any;
   }
 }
 
