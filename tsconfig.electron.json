@@ -9,11 +9,7 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "sourceMap": true,
-    "baseUrl": "./src",
-//    "paths": {
-//      "@node/*": ["src/node/*"],
-//      "@electron/*": ["src/electron/*"]
-//    }
+    "baseUrl": "./src"
   },
   "include": [
     "src/electron/**/*.ts",

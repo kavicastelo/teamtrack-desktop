@@ -1,0 +1,1 @@
+ALTER TABLE projects ADD COLUMN is_archived INTEGER DEFAULT 0;
