@@ -6,3 +6,4 @@ src/app/node_modules
 src/app/.angular
 *.*~
 .env
+src/app/src/app/config/supabase.config.ts

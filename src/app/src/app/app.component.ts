@@ -1,21 +1,21 @@
-import {Component, effect, OnDestroy, OnInit, ViewChild} from '@angular/core';
-import {NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet} from '@angular/router';
-import {IpcService} from './services/ipc.service';
-import {AsyncPipe, NgClass, NgIf} from '@angular/common';
-import {filter, map, merge, Subject, takeUntil} from 'rxjs';
-import {MatIcon} from '@angular/material/icon';
-import {MatIconButton} from '@angular/material/button';
-import {MatMenu, MatMenuItem, MatMenuTrigger} from '@angular/material/menu';
-import {MatSidenav, MatSidenavContainer, MatSidenavContent} from '@angular/material/sidenav';
-import {MatToolbar} from '@angular/material/toolbar';
-import {MatListItem, MatNavList} from '@angular/material/list';
-import {MatTooltip} from '@angular/material/tooltip';
-import {MessageContainerComponent} from './components/message-container/message-container.component';
-import {AuthService} from './services/auth.service';
-import {ProfileComponent} from './pages/profile/profile/profile.component';
-import {MatDialog} from '@angular/material/dialog';
-import {MatProgressSpinner} from '@angular/material/progress-spinner';
-import {AppLoadingComponent} from './components/app-loading/app-loading.component';
+import { Component, effect, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { IpcService } from './services/ipc.service';
+import { AsyncPipe, NgClass, NgIf } from '@angular/common';
+import { filter, map, merge, Subject, takeUntil } from 'rxjs';
+import { MatIcon } from '@angular/material/icon';
+import { MatIconButton } from '@angular/material/button';
+import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
+import { MatSidenav, MatSidenavContainer, MatSidenavContent } from '@angular/material/sidenav';
+import { MatToolbar } from '@angular/material/toolbar';
+import { MatListItem, MatNavList } from '@angular/material/list';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MessageContainerComponent } from './components/message-container/message-container.component';
+import { AuthService } from './services/auth.service';
+import { ProfileComponent } from './pages/profile/profile/profile.component';
+import { MatDialog } from '@angular/material/dialog';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { AppLoadingComponent } from './components/app-loading/app-loading.component';
 
 export interface SyncStatus {
   type: 'pull' | 'remoteUpdate';
@@ -153,6 +153,7 @@ export class AppComponent implements OnInit, OnDestroy {
     if (url.includes('files')) return '📃 Files';
     if (url.includes('team')) return '🧙‍♂️ Team';
     if (url.includes('analytics')) return '📈 Analytics';
+    if (url.includes('messaging')) return '💬 Messaging';
     if (url.includes('settings')) return '⚙️ Settings';
     return 'TeamTrack';
   }
