@@ -2,7 +2,7 @@ import {Component, Inject, OnInit} from '@angular/core';
 import {
   MAT_DIALOG_DATA,
   MatDialog,
-  MatDialogActions, MatDialogClose,
+  MatDialogActions,
   MatDialogContent,
   MatDialogRef,
   MatDialogTitle
@@ -28,8 +28,7 @@ import {DomSanitizer, SafeHtml} from '@angular/platform-browser';
     MatIconButton,
     TitleCasePipe,
     DatePipe,
-    MatButton,
-    MatDialogClose
+    MatButton
   ],
   templateUrl: './task-view-dialog.component.html',
   styleUrl: './task-view-dialog.component.scss',

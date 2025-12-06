@@ -44,6 +44,9 @@ const logFile = path.join(app.getPath("userData"), "startup.log");
 
 export async function initializeAppServices(mainWindow: BrowserWindow) {
     mainWin = mainWindow;
+
+    const devMode = process.env.NODE_ENV === "development";
+
     const key =
         (store.get("dbKey") as string) ||
         (() => {
@@ -53,8 +56,9 @@ export async function initializeAppServices(mainWindow: BrowserWindow) {
         })();
 
     dbService = new DatabaseService({
-        dbPath: path.join(app.getPath("userData"), "teamtrack.db.enc"),
+        dbPath: path.join(app.getPath("userData"), devMode ? "teamtrack.dev.db" : "teamtrack.db.enc"),
         encryptionKey: key,
+        unencrypted: devMode,
     });
 
     await dbService.open();

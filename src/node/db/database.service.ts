@@ -1,4 +1,4 @@
-import Database, {RunResult} from "better-sqlite3";
+import Database from "better-sqlite3";
 import {drizzle} from "drizzle-orm/better-sqlite3";
 import fs from "fs";
 import crypto from "crypto";
@@ -37,10 +37,12 @@ export class DatabaseService {
     private db?: Database.Database;
     private orm?: ReturnType<typeof drizzle>;
     private supabase?: SupabaseSyncService;
+    private unencrypted: boolean;
 
-    constructor(opts: { dbPath: string; encryptionKey: string }) {
+    constructor(opts: { dbPath: string; encryptionKey: string; unencrypted?: boolean }) {
         this.encryptedPath = opts.dbPath;
         this.key = crypto.createHash("sha256").update(opts.encryptionKey).digest();
+        this.unencrypted = opts.unencrypted ?? false;
     }
 
     setSupabaseService(sync: SupabaseSyncService) {
@@ -60,9 +62,14 @@ export class DatabaseService {
     }
 
     async open() {
-        this.tmpPath = path.join(os.tmpdir(), `teamtrack-${uuidv4()}.db`);
+        if (this.unencrypted) {
+            this.tmpPath = this.encryptedPath.replace(".enc", "");
+            console.log("[DB] Running in UNENCRYPTED DEVELOPMENT MODE:", this.tmpPath);
+        } else {
+            this.tmpPath = path.join(os.tmpdir(), `teamtrack-${uuidv4()}.db`);
+        }
 
-        if (fs.existsSync(this.encryptedPath)) {
+        if (!this.unencrypted && fs.existsSync(this.encryptedPath)) {
             try {
                 const encrypted = fs.readFileSync(this.encryptedPath);
                 const plain = decryptBuffer(encrypted, this.key);
@@ -97,6 +104,11 @@ export class DatabaseService {
         if (!this.db) return;
         const tmp = (this.db as any).name;
         this.db.close();
+
+        if (this.unencrypted) {
+            console.log("[DB] Closed without encryption (dev mode):", tmp);
+            return; // DO NOT ENCRYPT
+        }
 
         const plain = fs.readFileSync(tmp);
         const encrypted = encryptBuffer(plain, this.key);
