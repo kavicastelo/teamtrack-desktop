@@ -1,8 +1,8 @@
 {
-  "compilerOptions": {
-    "esModuleInterop": true,
-    "allowImportingTsExtensions": false,
-    "allowJs": true,
-    "resolveJsonModule": true
-  }
+    "compilerOptions": {
+        "esModuleInterop": true,
+        "allowImportingTsExtensions": false,
+        "allowJs": true,
+        "resolveJsonModule": true
+    }
 }

@@ -16,6 +16,7 @@ export const routes: Routes = [
   { path: 'auth/register', loadComponent: () => import('./pages/auth/auth-register/auth-register.component').then(m => m.AuthRegisterComponent) },
   { path: 'auth/login', loadComponent: () => import('./pages/auth/auth-login/auth-login.component').then(m => m.AuthLoginComponent) },
   { path: 'auth/callback', loadComponent: () => import('./pages/auth/auth-callback/auth-callback.component').then(m => m.AuthCallbackComponent) },
+  { path: 'messaging', loadComponent: () => import('./pages/messaging/messaging.component').then(m => m.MessagingComponent) },
   { path: 'settings', loadComponent: () => import('./pages/profile/profile-edit/profile-edit.component').then(m => m.ProfileEditComponent) },
   { path: '**', loadComponent: () => import('./pages/dashboard/dashboard/dashboard.component').then(m => m.DashboardComponent) },
 ];

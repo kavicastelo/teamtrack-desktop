@@ -20,6 +20,10 @@
         <mat-icon>check_circle</mat-icon>
         <span>Tasks</span>
       </a>
+      <a mat-list-item routerLink="/messaging" routerLinkActive="active">
+        <mat-icon>message</mat-icon>
+        <span>Messaging</span>
+      </a>
       <a mat-list-item routerLink="/time-tracking" routerLinkActive="active">
         <mat-icon>timer</mat-icon>
         <span>Time Tracking</span>
@@ -79,7 +83,8 @@
               <mat-icon>sync</mat-icon>
               <span>Sync</span>
             </button>
-            <button mat-menu-item (click)="pullOriginForce()" matTooltip="This will overwrite your local changes" style="color: #991b1b">
+            <button mat-menu-item (click)="pullOriginForce()" matTooltip="This will overwrite your local changes"
+              style="color: #991b1b">
               <mat-icon>cloud_sync</mat-icon>
               <span>Force Sync</span>
             </button>

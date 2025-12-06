@@ -1,0 +1,37 @@
+<div class="messaging-container">
+  <header class="chat-header">
+    <h1>TeamChat Realtime</h1>
+    <div class="user-info">
+      <span>Logged in as: <strong>{{ username }}</strong></span>
+    </div>
+  </header>
+
+  <div class="messages-list" #scrollContainer>
+    <div *ngIf="messages.length === 0" class="empty-state">
+      <p>No messages yet. Start the conversation!</p>
+    </div>
+
+    <div *ngFor="let msg of messages" 
+         class="message-bubble" 
+         [ngClass]="{'my-message': msg.sender === username, 'other-message': msg.sender !== username}">
+      <div class="message-meta">
+        <span class="sender">{{ msg.sender }}</span>
+        <span class="time">{{ msg.timestamp | date:'shortTime' }}</span>
+      </div>
+      <div class="message-content">
+        {{ msg.content }}
+      </div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <input type="text" 
+           [(ngModel)]="newMessage" 
+           (keyup.enter)="sendMessage()" 
+           placeholder="Type a message..." 
+           autofocus>
+    <button (click)="sendMessage()" [disabled]="!newMessage.trim()">
+      Send
+    </button>
+  </div>
+</div>
