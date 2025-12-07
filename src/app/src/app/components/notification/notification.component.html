@@ -1,0 +1,43 @@
+<button mat-icon-button [matMenuTriggerFor]="menu">
+    <mat-icon [matBadge]="(unreadCount$ | async)" [matBadgeHidden]="(unreadCount$ | async) === 0" matBadgeColor="warn">
+        notifications
+    </mat-icon>
+</button>
+
+<mat-menu #menu="matMenu" class="notification-menu">
+    <div class="notification-header" (click)="$event.stopPropagation()">
+        <h3>Notifications</h3>
+        <button mat-button color="primary" (click)="markAllAsRead()" [disabled]="(unreadCount$ | async) === 0">
+            Mark all as read
+        </button>
+    </div>
+
+    <div class="notification-list">
+        <div *ngIf="loading$ | async" class="loading-spinner">
+            <mat-spinner diameter="30"></mat-spinner>
+        </div>
+
+        <div *ngIf="(notifications$ | async)?.length === 0 && !(loading$ | async)" class="empty-state">
+            <p>No notifications</p>
+        </div>
+
+        <div mat-menu-item class="notification-item" *ngFor="let n of notifications$ | async" [class.unread]="!n.read">
+            <div class="notification-content">
+                <div class="notification-title-row">
+                    <span class="title">{{ n.title }}</span>
+                    <span class="time">{{ n.created_at | date:'short' }}</span>
+                </div>
+                <p class="message">{{ n.message }}</p>
+                <div class="actions">
+                    <button mat-icon-button (click)="markAsRead(n.id, $event)" *ngIf="!n.read"
+                        matTooltip="Mark as read">
+                        <mat-icon class="small-icon">check_circle_outline</mat-icon>
+                    </button>
+                    <button mat-icon-button (click)="delete(n.id, $event)" color="warn" matTooltip="Delete">
+                        <mat-icon class="small-icon">delete_outline</mat-icon>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</mat-menu>

@@ -1,14 +1,14 @@
 import Database from "better-sqlite3";
-import {drizzle} from "drizzle-orm/better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
 import fs from "fs";
 import crypto from "crypto";
 import os from "os";
 import path from "path";
-import {v4 as uuidv4} from "uuid";
-import {ensureHeartbeatSummarySchema} from "./heartbeat-summary.migration";
+import { v4 as uuidv4 } from "uuid";
+import { ensureHeartbeatSummarySchema } from "./heartbeat-summary.migration";
 import Store from "electron-store";
-import {SupabaseSyncService} from "../supabase-sync.service";
-import {runMigrations} from "./run.migrations";
+import { SupabaseSyncService } from "../supabase-sync.service";
+import { runMigrations } from "./run.migrations";
 
 const ALGO = "aes-256-gcm";
 const store = new Store();
@@ -112,7 +112,7 @@ export class DatabaseService {
 
         const plain = fs.readFileSync(tmp);
         const encrypted = encryptBuffer(plain, this.key);
-        fs.writeFileSync(this.encryptedPath, encrypted, {mode: 0o600});
+        fs.writeFileSync(this.encryptedPath, encrypted, { mode: 0o600 });
         fs.unlinkSync(tmp);
         console.log("[DB] Closed + Encrypted at", this.encryptedPath);
     }
@@ -158,7 +158,7 @@ export class DatabaseService {
              VALUES (?, ?, ?, ?, ?, ?, 0)`
         ).run(uuidv4(), "tasks", id, 1, JSON.stringify(payload), now);
 
-        return {id, ...payload, updated_at: now};
+        return { id, ...payload, updated_at: now };
     }
 
     listTasks(projectId?: string) {
@@ -272,7 +272,7 @@ export class DatabaseService {
                 `).run(durationMinutes, openEntry.id);
 
                 // Push update to revisions
-                const updatedEntry = {...openEntry, duration_minutes: durationMinutes};
+                const updatedEntry = { ...openEntry, duration_minutes: durationMinutes };
                 this.db!.prepare(`
                     INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
                     VALUES (?, ?, ?, ?, ?, ?, 0)
@@ -328,7 +328,7 @@ export class DatabaseService {
             now
         );
 
-        return {...payload, updated_at: now};
+        return { ...payload, updated_at: now };
     }
 
     getTaskById(id: string) {
@@ -340,7 +340,7 @@ export class DatabaseService {
     async deleteTask(taskId: string) {
         try {
             await Promise.all([
-                this.supabase?.deleteRecord('tasks', {id: taskId}),
+                this.supabase?.deleteRecord('tasks', { id: taskId }),
                 this.db!.prepare(`DELETE
                                   FROM tasks
                                   WHERE id = ?`).run(taskId),
@@ -393,7 +393,7 @@ export class DatabaseService {
             VALUES (?, ?, ?, ?, ?, ?, 0)
         `).run(uuidv4(), 'projects', id, 1, JSON.stringify(payload), now);
 
-        return {id, ...payload, created_at: now, updated_at: now};
+        return { id, ...payload, created_at: now, updated_at: now };
     }
 
     listProjects(projectId?: string) {
@@ -424,13 +424,13 @@ export class DatabaseService {
             VALUES (?, ?, ?, ?, ?, ?, 0)
         `).run(crypto.randomUUID(), 'projects', payload.id, Date.now(), JSON.stringify(payload), now);
 
-        return {...payload, updated_at: now};
+        return { ...payload, updated_at: now };
     }
 
     async deleteProject(projectId: string) {
         try {
             await Promise.all([
-                this.supabase?.deleteRecord('projects', {id: projectId}),
+                this.supabase?.deleteRecord('projects', { id: projectId }),
                 this.db!.prepare(`DELETE
                                   FROM projects
                                   WHERE id = ?`).run(projectId),
@@ -442,7 +442,7 @@ export class DatabaseService {
         }
     }
 
-// TEAMS
+    // TEAMS
     createTeam(payload: any) {
         const id = payload.id || uuidv4();
         payload.id = id;
@@ -459,7 +459,7 @@ export class DatabaseService {
             VALUES (?, ?, ?, ?, ?, ?, 0)
         `).run(uuidv4(), 'teams', id, 1, JSON.stringify(payload), now);
 
-        return {id, ...payload, created_at: now, updated_at: now};
+        return { id, ...payload, created_at: now, updated_at: now };
     }
 
     listTeams(projectId?: string) {
@@ -521,13 +521,13 @@ export class DatabaseService {
             VALUES (?, ?, ?, ?, ?, ?, 0)
         `).run(crypto.randomUUID(), 'teams', payload.id, Date.now(), JSON.stringify(payload), now);
 
-        return {...payload, updated_at: now};
+        return { ...payload, updated_at: now };
     }
 
     async deleteTeam(teamId: string) {
         try {
             await Promise.all([
-                this.supabase?.deleteRecord('teams', {id: teamId}),
+                this.supabase?.deleteRecord('teams', { id: teamId }),
                 this.db!.prepare(`DELETE
                                   FROM teams
                                   WHERE id = ?`).run(teamId),
@@ -539,7 +539,7 @@ export class DatabaseService {
         }
     }
 
-// USERS
+    // USERS
     public createUser(payload: any) {
         const id = payload.id || uuidv4();
         payload.id = id;
@@ -565,7 +565,7 @@ export class DatabaseService {
             // continue login
         }
 
-        return {id, ...payload, updated_at: now, invited_at: now};
+        return { id, ...payload, updated_at: now, invited_at: now };
     }
 
     public getUserById(id: string) {
@@ -592,7 +592,7 @@ export class DatabaseService {
             VALUES (?, ?, ?, ?, ?, ?, 0)
         `).run(uuidv4(), 'users', payload.userId, 1, JSON.stringify(payload), now);
 
-        return {...payload, updated_at: now};
+        return { ...payload, updated_at: now };
     }
 
     public updateUserProfile(payload: any) {
@@ -614,7 +614,7 @@ export class DatabaseService {
             VALUES (?, ?, ?, ?, ?, ?, 0)
         `).run(uuidv4(), 'users', payload.id, 1, JSON.stringify(payload), now);
 
-        return {...payload, updated_at: now};
+        return { ...payload, updated_at: now };
     }
 
     public getCurrentTeam(id?: string): string | null {
@@ -639,10 +639,10 @@ export class DatabaseService {
             VALUES (?, ?, ?, ?, ?, ?, 0)
         `).run(uuidv4(), 'users', payload.id, 1, JSON.stringify(payload), now);
 
-        return {...payload, updated_at: now};
+        return { ...payload, updated_at: now };
     }
 
-// TEAM MEMBERS
+    // TEAM MEMBERS
     public createTeamMember(payload: any) {
         const id = payload.id || uuidv4();
         payload.id = id;
@@ -658,7 +658,7 @@ export class DatabaseService {
             VALUES (?, ?, ?, ?, ?, ?, 0)
         `).run(uuidv4(), 'team_members', id, 1, JSON.stringify(payload), now);
 
-        return {id, ...payload, created_at: now};
+        return { id, ...payload, created_at: now };
     }
 
     public updateTeamMemberRole(payload: any) {
@@ -675,7 +675,7 @@ export class DatabaseService {
             VALUES (?, ?, ?, ?, ?, ?, 0)
         `).run(uuidv4(), 'team_members', payload.id, 1, JSON.stringify(payload), now);
 
-        return {...payload, updated_at: now};
+        return { ...payload, updated_at: now };
     }
 
     public updateTeamMember(payload: any) {
@@ -692,7 +692,7 @@ export class DatabaseService {
             VALUES (?, ?, ?, ?, ?, ?, 0)
         `).run(uuidv4(), 'team_members', payload.id, 1, JSON.stringify(payload), now);
 
-        return {...payload, updated_at: now};
+        return { ...payload, updated_at: now };
     }
 
     public listTeamMembers(teamId: string) {
@@ -709,7 +709,7 @@ export class DatabaseService {
     public async deleteTeamMember(payload: any) {
         const now = Date.now();
         await Promise.all([
-            this.supabase?.deleteRecord('team_members', {team_id: payload.team_id, user_id: payload.user_id}),
+            this.supabase?.deleteRecord('team_members', { team_id: payload.team_id, user_id: payload.user_id }),
             this.db!.prepare(`
                 DELETE
                 FROM team_members
@@ -717,10 +717,10 @@ export class DatabaseService {
                   AND user_id = ?
             `).run(payload.team_id, payload.user_id),
         ]);
-        return {...payload, updated_at: now};
+        return { ...payload, updated_at: now };
     }
 
-// HEARTBEATS
+    // HEARTBEATS
     createHeartbeat(payload: any) {
         const id = payload.id || uuidv4();
         payload.id = id;
@@ -760,7 +760,7 @@ export class DatabaseService {
             now
         );
 
-        return {id, ...payload};
+        return { id, ...payload };
     }
 
     getHeartbeatsForUser(userId: string, startDate: number, endDate: number) {
@@ -792,7 +792,7 @@ export class DatabaseService {
         `).all(userId, startDate, endDate);
     }
 
-// CALENDARS
+    // CALENDARS
     public updateUserCalendarSync(payload: any) {
         const now = Date.now();
         this.db!.prepare(`
@@ -803,7 +803,7 @@ export class DatabaseService {
                 last_calendar_sync    = ?
             WHERE id = ?
         `).run(payload.google_refresh_token, payload.google_calendar_id, payload.calendar_sync_enabled, payload.last_calendar_sync, payload.id);
-        return {...payload, updated_at: now};
+        return { ...payload, updated_at: now };
     }
 
     async upsertEventLocal(ev: any, ownerUserId: string) {
@@ -853,11 +853,11 @@ export class DatabaseService {
             INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
             VALUES (?, ?, ?, ?, ?, ?, 0)
         `);
-        revStmt.run(uuidv4(), 'calendar_events', eventId, 1, JSON.stringify({deleted: true}), Date.now());
+        revStmt.run(uuidv4(), 'calendar_events', eventId, 1, JSON.stringify({ deleted: true }), Date.now());
     }
 
-// NOTIFICATIONS
-    public createNotification(payload: any) {
+    // NOTIFICATIONS
+    createNotification(payload: any) {
         const now = Date.now();
         const id = payload.id || uuidv4();
         this.db!.prepare(`
@@ -872,6 +872,82 @@ export class DatabaseService {
             INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
             VALUES (?, ?, ?, ?, ?, ?, 0)
         `).run(uuidv4(), 'notifications', id, 1, JSON.stringify(payload), now);
-        return {...payload, created_at: now, updated_at: now};
+        return { ...payload, created_at: now, updated_at: now };
+    }
+
+    getNotifications(userId: string, limit: number = 50, offset: number = 0) {
+        return this.db!.prepare(`
+            SELECT *
+            FROM notifications
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+        `).all(userId, limit, offset).map((n: any) => ({
+            ...n,
+            data: n.data ? JSON.parse(n.data) : null,
+            read: Boolean(n.read)
+        }));
+    }
+
+    markNotificationAsRead(id: string) {
+        const now = Date.now();
+        const notif: any = this.db!.prepare(`SELECT * FROM notifications WHERE id = ?`).get(id);
+        if (!notif) return null;
+
+        this.db!.prepare(`
+            UPDATE notifications
+            SET read = 1, updated_at = ?
+            WHERE id = ?
+        `).run(now, id);
+
+        const updated = { ...notif, read: 1, updated_at: now };
+        // Sync update
+        this.db!.prepare(`
+            INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+            VALUES (?, ?, ?, ?, ?, ?, 0)
+        `).run(uuidv4(), 'notifications', id, Date.now(), JSON.stringify(updated), now);
+
+        return updated;
+    }
+
+    markAllNotificationsAsRead(userId: string) {
+        const now = Date.now();
+        // Get all unread notifications to sync updates
+        const unread = this.db!.prepare(`
+            SELECT * FROM notifications WHERE user_id = ? AND read = 0
+        `).all(userId);
+
+        this.db!.prepare(`
+            UPDATE notifications
+            SET read = 1, updated_at = ?
+            WHERE user_id = ? AND read = 0
+        `).run(now, userId);
+
+        // Batch revisions ideally, but for now loop is safer
+        const stmt = this.db!.prepare(`
+            INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+            VALUES (?, ?, ?, ?, ?, ?, 0)
+        `);
+
+        for (const n of unread as any[]) {
+            const updated = { ...n, read: 1, updated_at: now };
+            stmt.run(uuidv4(), 'notifications', n.id, Date.now(), JSON.stringify(updated), now);
+        }
+
+        return true;
+    }
+
+    deleteNotification(id: string) {
+        const now = Date.now();
+        this.supabase?.deleteRecord('notifications', { id });
+        this.db!.prepare(`DELETE FROM notifications WHERE id = ?`).run(id);
+
+        // Sync deletion
+        this.db!.prepare(`
+            INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
+            VALUES (?, ?, ?, ?, ?, ?, 0)
+        `).run(uuidv4(), 'notifications', id, 1, JSON.stringify({ deleted: true }), now);
+
+        return true;
     }
 }

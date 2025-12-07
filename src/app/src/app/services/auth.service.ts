@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
-import {BehaviorSubject, Observable} from 'rxjs';
-import {toObservable} from '@angular/core/rxjs-interop';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 declare global {
   interface Window {
@@ -21,7 +21,7 @@ export class AuthService {
   readonly user$ = toObservable(this.user);
   readonly userId$ = toObservable(this.userId);
 
-  constructor() {}
+  constructor() { }
 
   /** Restore session from local (Electron) */
   async init() {
@@ -29,7 +29,7 @@ export class AuthService {
     if (session) {
       this.session.set(session);
       this.userId.set(session.user?.id ?? null);
-      const user = await window.electronAPI.auth.getUser(session.user.id);
+      const user = await window.electronAPI.auth.getUser(this.userId() ?? '');
       this.user.set(user);
     } else {
       this.session.set(null);
