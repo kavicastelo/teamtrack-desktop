@@ -1,9 +1,9 @@
 import fetch from 'node-fetch';
 import { DatabaseService } from './db/database.service.js';
-import {users} from "../drizzle/shema";
-import {AuthService} from "../electron/services/auth.service";
-import {eq} from "drizzle-orm";
-import {EventEmitter} from "events";
+import { users } from "../drizzle/shema";
+import { AuthService } from "../electron/services/auth.service";
+import { eq } from "drizzle-orm";
+import { EventEmitter } from "events";
 
 export class GoogleCalendarSyncService extends EventEmitter {
     private interval: NodeJS.Timeout | null = null;
@@ -81,7 +81,7 @@ export class GoogleCalendarSyncService extends EventEmitter {
                 if (pageToken) qs.set('pageToken', pageToken);
 
                 const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${qs.toString()}`;
-                const res = await fetch(url, { headers: { Authorization: `Bearer ${tokens.access_token}` }});
+                const res = await fetch(url, { headers: { Authorization: `Bearer ${tokens.access_token}` } });
                 const data = await res.json();
 
                 if (data.error) {
@@ -112,6 +112,15 @@ export class GoogleCalendarSyncService extends EventEmitter {
         } catch (err: any) {
             if (err.message && err.message.includes("invalid_grant")) {
                 console.log(`[CalendarSync] Token invalid for user ${userId}. Auto-disconnected.`);
+
+                this.dbService.createNotification({
+                    user_id: userId,
+                    type: "calendar_token_invalid",
+                    title: "Google Calendar Sync Disconnected",
+                    message: "Your Google Calendar connection expired or was revoked. Please reconnect it to resume syncing.",
+                    data: { reason: "invalid_grant" }
+                });
+
                 // don't rethrow so the background worker continues
                 return;
             }
@@ -119,7 +128,7 @@ export class GoogleCalendarSyncService extends EventEmitter {
         }
     }
 
-// create event on Google and local
+    // create event on Google and local
     async createEventForUser(userId: string, startMs: number, endMs: number, summary = "") {
         const tokens = await this.auth.ensureAccessToken(userId);
         const user = await this.auth.getUserById(userId);
@@ -144,7 +153,7 @@ export class GoogleCalendarSyncService extends EventEmitter {
         return ev;
     }
 
-// delete event
+    // delete event
     async deleteEventForUser(userId: string, eventId: string) {
         const tokens = await this.auth.ensureAccessToken(userId);
         const user = await this.auth.getUserById(userId);
