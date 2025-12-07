@@ -21,11 +21,13 @@ export interface SyncStatus {
   type: 'pull' | 'remoteUpdate';
 }
 
+import { NotificationComponent } from './components/notification/notification.component';
+
 @Component({
   selector: 'app-root',
   imports: [RouterOutlet, NgClass, NgIf, AsyncPipe, MatIcon, MatIconButton, MatMenu, MatMenuItem, RouterLink,
     MatMenuTrigger, MatSidenavContent, MatToolbar, MatSidenavContainer, MatNavList, MatListItem, RouterLinkActive,
-    MatSidenav, MatTooltip, MessageContainerComponent, MatProgressSpinner, AppLoadingComponent],
+    MatSidenav, MatTooltip, MessageContainerComponent, MatProgressSpinner, AppLoadingComponent, NotificationComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
   standalone: true
@@ -58,6 +60,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
       if (!session && !user) return;
 
+      if (session && !user) return; // Wait for user details to be loaded
+
       this.loading = true;
 
       if (!session && !window.location.href.includes('auth/callback')) {
@@ -66,8 +70,10 @@ export class AppComponent implements OnInit, OnDestroy {
         return;
       }
 
-      this.userProfile = user;
-      this.adminCheck().then();
+      if (user) {
+        this.userProfile = user;
+        this.adminCheck().then();
+      }
 
       this.hasNavigated = true;
       this.router.navigate(['/tasks']).then(() => {

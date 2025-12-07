@@ -3,12 +3,12 @@ import type { DatabaseService } from "../../node/db/database.service.js";
 import type { SupabaseSyncService } from "../../node/supabase-sync.service.js";
 import type { AuthService } from "../services/auth.service";
 import type { HeartbeatService } from "../../node/heartbeat.service";
-import {registerGoogleCalendarIPC} from "./google-calendar-ipc";
-import {GoogleCalendarSyncService} from "../../node/google-calendar-sync.service";
-import {registerMetricsIPC} from "./metrics-ipc";
-import {registerHeartbeatIPC} from "./heartbeat-ips";
-import {registerAdminAnalyticsIPC} from "./register-admin-analytics-ipc";
-import {HeartbeatSummaryJob} from "../../node/db/aggregators/heartbeat-summary-job";
+import { registerGoogleCalendarIPC } from "./google-calendar-ipc";
+import { GoogleCalendarSyncService } from "../../node/google-calendar-sync.service";
+import { registerMetricsIPC } from "./metrics-ipc";
+import { registerHeartbeatIPC } from "./heartbeat-ips";
+import { registerAdminAnalyticsIPC } from "./register-admin-analytics-ipc";
+import { HeartbeatSummaryJob } from "../../node/db/aggregators/heartbeat-summary-job";
 const Store = require('electron-store');
 const store = new Store();
 
@@ -20,7 +20,7 @@ export function registerIPCHandlers(services: {
     calendarSync: GoogleCalendarSyncService;
     hbJob: HeartbeatSummaryJob;
 }) {
-    const { dbService, syncService, authService, heartbeatService, calendarSync, hbJob  } = services;
+    const { dbService, syncService, authService, heartbeatService, calendarSync, hbJob } = services;
     const currentUserId = store.get('currentUserId');
 
     /** Authentication */
@@ -205,7 +205,7 @@ export function registerIPCHandlers(services: {
             action: "task:delete",
             object_type: "task",
             object_id: taskId,
-            payload: "task("+taskId+") deleted",
+            payload: "task(" + taskId + ") deleted",
         });
         return taskDeleted;
     });
@@ -229,7 +229,7 @@ export function registerIPCHandlers(services: {
             action: "attachment:download",
             object_type: "attachment",
             object_id: payload.id || 'ATTACHMENT',
-            payload: "user("+payload.userId+") downloaded file from "+attachment,
+            payload: "user(" + payload.userId + ") downloaded file from " + attachment,
         });
         return attachment;
     });
@@ -240,11 +240,11 @@ export function registerIPCHandlers(services: {
             action: "attachment:open",
             object_type: "attachment",
             object_id: payload.id || 'ATTACHMENT',
-            payload: "user("+payload.userId+") opened file from "+attachment,
+            payload: "user(" + payload.userId + ") opened file from " + attachment,
         });
         return attachment;
     });
-    ipcMain.handle('list-attachments', async (_, taskId: string|null) => syncService.listAttachments(taskId));
+    ipcMain.handle('list-attachments', async (_, taskId: string | null) => syncService.listAttachments(taskId));
 
     /** Projects **/
     ipcMain.handle("db:createProject", async (_, payload) => {
@@ -277,7 +277,7 @@ export function registerIPCHandlers(services: {
             action: "project:delete",
             object_type: "project",
             object_id: projectId,
-            payload: "project("+projectId+") deleted",
+            payload: "project(" + projectId + ") deleted",
         });
         return projectDeleted;
     })
@@ -315,7 +315,7 @@ export function registerIPCHandlers(services: {
             action: "team:delete",
             object_type: "team",
             object_id: teamId,
-            payload: "team("+teamId+") deleted",
+            payload: "team(" + teamId + ") deleted",
         });
         return teamDeleted;
     });
@@ -337,4 +337,36 @@ export function registerIPCHandlers(services: {
 
     /** Heartbeat **/
     registerHeartbeatIPC(dbService);
+    /** Notification **/
+    ipcMain.handle("notification:list", (_e, { limit, offset }) => dbService.getNotifications(currentUserId, limit, offset));
+    ipcMain.handle("notification:markRead", async (_e, id) => {
+        const notif = dbService.markNotificationAsRead(id);
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "notification:read",
+            object_type: "notification",
+            object_id: id,
+        });
+        return notif;
+    });
+    ipcMain.handle("notification:markAllRead", async (_e) => {
+        dbService.markAllNotificationsAsRead(currentUserId);
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "notification:read_all",
+            object_type: "notification",
+            object_id: currentUserId,
+        });
+        return true;
+    });
+    ipcMain.handle("notification:delete", async (_e, id) => {
+        dbService.deleteNotification(id);
+        await dbService.logEvent({
+            actor: currentUserId,
+            action: "notification:delete",
+            object_type: "notification",
+            object_id: id,
+        });
+        return true;
+    });
 }

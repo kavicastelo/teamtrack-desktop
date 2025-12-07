@@ -48,28 +48,28 @@ contextBridge.exposeInMainWorld("electronAPI", {
         forceRefreshSummaries() { return ipcRenderer.invoke('analytics:forceRefreshSummaries') },
     },
     hb: {
-        getHeartbeatsForUser: (userId: string|null, startDate: number, endDate: number) => ipcRenderer.invoke('get-heartbeats', userId, startDate, endDate),
-        getAggregatedTimeByApp: (userId: string|null, startDate: number, endDate: number) => ipcRenderer.invoke('get-aggregated-time', userId, startDate, endDate),
-        getDailyActivity: (userId: string|null, startDate: number, endDate: number) => ipcRenderer.invoke('get-daily-activity', userId, startDate, endDate),
+        getHeartbeatsForUser: (userId: string | null, startDate: number, endDate: number) => ipcRenderer.invoke('get-heartbeats', userId, startDate, endDate),
+        getAggregatedTimeByApp: (userId: string | null, startDate: number, endDate: number) => ipcRenderer.invoke('get-aggregated-time', userId, startDate, endDate),
+        getDailyActivity: (userId: string | null, startDate: number, endDate: number) => ipcRenderer.invoke('get-daily-activity', userId, startDate, endDate),
     },
     tm: {
         createTeamMember(payload: any) { return ipcRenderer.invoke('teamMember:create', payload) },
         updateTeamMember(payload: any) { return ipcRenderer.invoke('teamMember:update', payload) },
         updateTeamMemberRole(payload: any) { return ipcRenderer.invoke('teamMember:update-role', payload) },
         deleteTeamMember(teamMemberId: string) { return ipcRenderer.invoke('teamMember:delete', teamMemberId) },
-        listTeamMembers(teamId: string|null) { return ipcRenderer.invoke('teamMember:list', teamId) },
+        listTeamMembers(teamId: string | null) { return ipcRenderer.invoke('teamMember:list', teamId) },
     },
     createTask: (payload: any) => ipcRenderer.invoke("task:create", payload),
     updateTask: (payload: any) => ipcRenderer.invoke("task:update", payload),
     deleteTask: (id: string) => ipcRenderer.invoke("task:delete", id),
     listTasks: (projectId?: string) => ipcRenderer.invoke("task:list", projectId),
-    listTasksByTeamId: (teamId?: string|null) => ipcRenderer.invoke("task:listByTeamId", teamId),
+    listTasksByTeamId: (teamId?: string | null) => ipcRenderer.invoke("task:listByTeamId", teamId),
     uploadAttachment: (payload: any) => ipcRenderer.invoke("upload-attachment", payload),
     downloadAttachment: (payload: any) => ipcRenderer.invoke("download-attachment", payload),
     openAttachment: (payload: any) => ipcRenderer.invoke("open-attachment", payload),
     listAttachments: (taskId: string) => ipcRenderer.invoke("list-attachments", taskId),
     createProject: (payload) => ipcRenderer.invoke('db:createProject', payload),
-    listProjects: (projectId:string|null) => ipcRenderer.invoke('db:listProjects', projectId),
+    listProjects: (projectId: string | null) => ipcRenderer.invoke('db:listProjects', projectId),
     updateProject: (payload) => ipcRenderer.invoke('db:updateProject', payload),
     deleteProject: (payload) => ipcRenderer.invoke('db:deleteProject', payload),
     createTeam: (payload) => ipcRenderer.invoke('db:createTeam', payload),
@@ -120,5 +120,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
         const listener = (_event, payload) => cb(payload);
         ipcRenderer.on("app:loaded", listener);
         return () => ipcRenderer.removeListener("app:loaded", listener);
-    }
+    },
+    notifications: {
+        list: (limit = 50, offset = 0) => ipcRenderer.invoke('notification:list', { limit, offset }),
+        markRead: (id: string) => ipcRenderer.invoke('notification:markRead', id),
+        markAllRead: () => ipcRenderer.invoke('notification:markAllRead'),
+        delete: (id: string) => ipcRenderer.invoke('notification:delete', id),
+    },
 });

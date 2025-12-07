@@ -1,15 +1,15 @@
 import { Injectable } from '@angular/core';
-import {Subject} from 'rxjs';
+import { Subject } from 'rxjs';
 
 declare global {
   interface Window {
     electronAPI: any;
     calendarAPI: {
-      connect(userId?: string|null): Promise<any>;
-      disconnect(userId?: string|null): Promise<any>;
-      getStatus(userId?: string|null): Promise<{ connected: boolean; calendar_id?: string; sync_enabled?: boolean }>;
+      connect(userId?: string | null): Promise<any>;
+      disconnect(userId?: string | null): Promise<any>;
+      getStatus(userId?: string | null): Promise<{ connected: boolean; calendar_id?: string; sync_enabled?: boolean }>;
       getEvents(payload?: any): Promise<any>;
-      syncCalendar(userId?: string|null): Promise<any>;
+      syncCalendar(userId?: string | null): Promise<any>;
       createEvent(payload: any): Promise<any>;
       deleteEvent(payload: any): Promise<any>;
     };
@@ -43,22 +43,22 @@ export class IpcService {
 
     if (window.electronAPI?.onSuccessMessage) {
       window.electronAPI.onSuccessMessage((data: any) =>
-        this.messageEvents$.next({type: "success", record: data}));
+        this.messageEvents$.next({ type: "success", record: data }));
     }
 
     if (window.electronAPI?.onErrorMessage) {
       window.electronAPI.onErrorMessage((data: any) =>
-        this.messageEvents$.next({type: "error", record: data}));
+        this.messageEvents$.next({ type: "error", record: data }));
     }
 
     if (window.electronAPI?.onInfoMessage) {
       window.electronAPI.onInfoMessage((data: any) =>
-        this.messageEvents$.next({type: "info", record: data}));
+        this.messageEvents$.next({ type: "info", record: data }));
     }
 
     if (window.electronAPI?.onWarningMessage) {
       window.electronAPI.onWarningMessage((data: any) =>
-        this.messageEvents$.next({type: "warning", record: data}));
+        this.messageEvents$.next({ type: "warning", record: data }));
     }
 
     if (window.electronAPI?.onAppLoaded) {
@@ -76,10 +76,10 @@ export class IpcService {
   async updateTask(payload: any) {
     return window.electronAPI.updateTask(payload);
   }
-  async listTasks(projectId?: string|null) {
+  async listTasks(projectId?: string | null) {
     return window.electronAPI.listTasks(projectId);
   }
-  listTasksByTeamId(teamId?: string|null) {
+  listTasksByTeamId(teamId?: string | null) {
     return window.electronAPI.listTasksByTeamId(teamId);
   }
   async deleteTask(id: string) {
@@ -99,7 +99,7 @@ export class IpcService {
   async uploadAttachment(payload: any) {
     return window.electronAPI.uploadAttachment(payload);
   }
-  async listAttachments(taskId?: string|null) {
+  async listAttachments(taskId?: string | null) {
     return window.electronAPI.listAttachments(taskId);
   }
   async downloadAttachment(payload: any) {
@@ -112,7 +112,7 @@ export class IpcService {
   async createProject(payload: any) {
     return window.electronAPI.createProject(payload);
   }
-  async listProjects(projectId?: string|null) {
+  async listProjects(projectId?: string | null) {
     return window.electronAPI.listProjects(projectId);
   }
   async updateProject(payload: any) {
@@ -125,10 +125,10 @@ export class IpcService {
   async createTeam(payload: any) {
     return window.electronAPI.createTeam(payload);
   }
-  async listTeams(projectId?: string|null) {
+  async listTeams(projectId?: string | null) {
     return window.electronAPI.listTeams(projectId);
   }
-  async userTeams(userId?: string|null) {
+  async userTeams(userId?: string | null) {
     return window.electronAPI.userTeams(userId);
   }
   async deleteTeam(id: string) {
@@ -137,7 +137,7 @@ export class IpcService {
   async updateTeam(payload: any) {
     return window.electronAPI.updateTeam(payload);
   }
-  async getTeam(id: string|null) {
+  async getTeam(id: string | null) {
     return window.electronAPI.getTeam(id);
   }
 
@@ -153,19 +153,19 @@ export class IpcService {
     return window.electronAPI.onDeepLink(cb);
   }
 
-  connectCalendar(userId?: string|null) {
+  connectCalendar(userId?: string | null) {
     return window.electronAPI.calendarAPI.connect(userId);
   }
-  disconnectCalendar(userId?: string|null) {
+  disconnectCalendar(userId?: string | null) {
     return window.electronAPI.calendarAPI.disconnect(userId);
   }
-  getCalendarStatus(userId?: string|null) {
+  getCalendarStatus(userId?: string | null) {
     return window.electronAPI.calendarAPI.getStatus(userId);
   }
   async getCalendarEvents(payload?: any) {
     return window.electronAPI.calendarAPI.getEvents(payload);
   }
-  async syncCalendar(userId?: string|null) {
+  async syncCalendar(userId?: string | null) {
     return window.electronAPI.calendarAPI.syncCalendar(userId);
   }
   async createCalendarEvent(payload: any) {
@@ -201,5 +201,22 @@ export class IpcService {
   }
   async forceRefreshSummaries() {
     return window.electronAPI.admin.forceRefreshSummaries();
+  }
+
+  // Notifications
+  async getNotifications(limit: number = 50, offset: number = 0) {
+    return window.electronAPI.notifications.list(limit, offset);
+  }
+
+  async markNotificationAsRead(id: string) {
+    return window.electronAPI.notifications.markRead(id);
+  }
+
+  async markAllNotificationsAsRead() {
+    return window.electronAPI.notifications.markAllRead();
+  }
+
+  async deleteNotification(id: string) {
+    return window.electronAPI.notifications.delete(id);
   }
 }
