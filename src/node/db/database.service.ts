@@ -158,6 +158,17 @@ export class DatabaseService {
              VALUES (?, ?, ?, ?, ?, ?, 0)`
         ).run(uuidv4(), "tasks", id, 1, JSON.stringify(payload), now);
 
+        // Notify assignee if present
+        if (payload.assignee) {
+            this.createNotification({
+                user_id: payload.assignee,
+                type: 'task_assigned',
+                title: 'New Task Assigned',
+                message: `You have been assigned to task: ${payload.title}`,
+                data: { taskId: id, projectId: payload.project_id }
+            });
+        }
+
         return { id, ...payload, updated_at: now };
     }
 
@@ -393,6 +404,16 @@ export class DatabaseService {
             VALUES (?, ?, ?, ?, ?, ?, 0)
         `).run(uuidv4(), 'projects', id, 1, JSON.stringify(payload), now);
 
+        if (payload.owner_id) {
+            this.createNotification({
+                user_id: payload.owner_id,
+                type: 'project_created',
+                title: 'Project Created',
+                message: `Project ${payload.name} has been created.`,
+                data: { projectId: id }
+            });
+        }
+
         return { id, ...payload, created_at: now, updated_at: now };
     }
 
@@ -561,6 +582,14 @@ export class DatabaseService {
                 INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
                 VALUES (?, ?, ?, ?, ?, ?, 0)
             `).run(uuidv4(), 'users', id, 1, JSON.stringify(payload), now);
+
+            this.createNotification({
+                user_id: id,
+                type: 'welcome',
+                title: 'Welcome to TeamTrack',
+                message: `Thanks for joining us!`,
+                data: {}
+            });
         } else {
             // continue login
         }
@@ -657,6 +686,17 @@ export class DatabaseService {
             INSERT INTO revisions (id, object_type, object_id, seq, payload, created_at, synced)
             VALUES (?, ?, ?, ?, ?, ?, 0)
         `).run(uuidv4(), 'team_members', id, 1, JSON.stringify(payload), now);
+
+        // Notify user
+        const team = this.getTeam(payload.team_id);
+        const teamName = team ? (team as any).name : 'a team';
+        this.createNotification({
+            user_id: payload.user_id,
+            type: 'team_invite',
+            title: 'Added to Team',
+            message: `You have been added to team: ${teamName}`,
+            data: { teamId: payload.team_id, role: payload.role }
+        });
 
         return { id, ...payload, created_at: now };
     }

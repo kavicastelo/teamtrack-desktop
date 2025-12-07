@@ -78,17 +78,27 @@
     margin-top: 4px;
     opacity: 0;
     transition: opacity 0.2s;
+    gap: 4px;
 
     button {
       width: 24px;
       height: 24px;
+      aspect-ratio: 1/1;
       line-height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
 
       .small-icon {
         font-size: 16px;
         width: 16px;
         height: 16px;
         line-height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 !important;
+        padding: 0 !important;
       }
     }
   }
